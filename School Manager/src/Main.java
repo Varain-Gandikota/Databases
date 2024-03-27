@@ -21,6 +21,7 @@ public class Main {
                     "FOREIGN KEY (course_id) REFERENCES course(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
                     "FOREIGN KEY (teacher_id) REFERENCES teacher(id) ON DELETE CASCADE ON UPDATE CASCADE);");
             statement.execute("CREATE TABLE IF NOT EXISTS student(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
+
             statement.execute("CREATE TABLE IF NOT EXISTS enrollment(section_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY(section_id, student_id), " +
                     "FOREIGN KEY(section_id) REFERENCES section(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
                     "FOREIGN KEY(student_id) REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE);");
@@ -29,6 +30,10 @@ public class Main {
                 String fn = "'Varain" + i + "' ";
                 statement.executeUpdate("INSERT INTO student(first_name, last_name) VALUES (" + fn + ", 'Gandikota');");
             }
+            statement.executeUpdate("INSERT INTO teacher(first_name, last_name) VALUES ('The Goated', 'GUY');");
+            statement.executeUpdate("INSERT INTO course(title, course_type) VALUES ('Unity Game Development', 1);");
+            statement.executeUpdate("INSERT INTO section(course_id, teacher_id) VALUES (1, 1)");
+            statement.executeUpdate("INSERT INTO enrollment(section_id, student_id) VALUES (1, 1)");
             SchoolManagerFrame schoolFrame = new SchoolManagerFrame(connection);
 
         }catch (Exception e){

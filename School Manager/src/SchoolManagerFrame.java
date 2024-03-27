@@ -16,10 +16,11 @@ public class SchoolManagerFrame extends JFrame{
 
     private Table teacherTable;
     private Table studentTable;
+    private Table studentScheduleTable;
     private Table courseTable;
     private Table sectionTable;
     private Connection connection;
-
+    private Button studentSaveChanges;
     private JPanel teacherPanel;
     private JPanel studentPanel;
     private JPanel coursePanel;
@@ -134,10 +135,11 @@ public class SchoolManagerFrame extends JFrame{
         JScrollPane teacherScrollPane = new JScrollPane(teacherTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         JScrollPane studentScrollPane = new JScrollPane(studentTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         JScrollPane courseScrollPane = new JScrollPane(courseTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-
+        JScrollPane scheduleScrollPane = new JScrollPane(studentScheduleTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         teacherScrollPane.setBounds(10, 10, 500, 550);
         studentScrollPane.setBounds(10, 10, 500, 550);
         courseScrollPane.setBounds(10, 10, 500, 550);
+        scheduleScrollPane.setBounds(520, 10, 250, 100);
 
         teacherPanel = new JPanel(null);
         studentPanel = new JPanel(null);
@@ -148,9 +150,10 @@ public class SchoolManagerFrame extends JFrame{
         teacherPanel.setSize(getWidth(), getHeight());
 
         studentPanel.add(studentScrollPane);
+        studentPanel.add(scheduleScrollPane);
         studentPanel.setSize(getWidth(), getHeight());
 
-        // student buttons and stuff
+        studentSaveChanges = new Button("Save Changes", 550, 550, 150, 50, studentPanel);
 
         coursePanel.add(courseScrollPane);
         coursePanel.setSize(getWidth(), getHeight());
@@ -171,7 +174,9 @@ public class SchoolManagerFrame extends JFrame{
         teacherTable = constructTable("SELECT * FROM teacher WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
         studentTable = constructTable("SELECT * FROM student WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
         courseTable = constructTable("SELECT * FROM course WHERE id >= 1;", new String[]{"id", "title", "type"}, nonEditableColumns);
+        nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1);
 
+        studentScheduleTable = constructScheduleTable(1);
         studentTable.getSelectionModel().addListSelectionListener(e -> {
             if (studentTable.getSelectedRow() == -1)
                 return;
@@ -179,6 +184,7 @@ public class SchoolManagerFrame extends JFrame{
             for (int i = 0; i < studentTable.getColumnCount(); i++)
             {
                 System.out.println(studentTable.getValueAt(studentTable.getSelectedRow(), i));
+
             }
             System.out.println(studentTable.getColumnModel().getColumn(studentTable.getSelectedColumn()));
             studentTable.clearSelection();
@@ -225,6 +231,56 @@ public class SchoolManagerFrame extends JFrame{
             tableData[i] = data.get(i).toArray();
         }
         Table t = new Table(columnNames, tableData, nonEditableColumns);
+        t.setVisible(true);
+        t.getTableHeader().setReorderingAllowed(false);
+        t.getTableHeader().setResizingAllowed(false);
+        return t;
+    }
+    public Table constructScheduleTable(int id)
+    {
+        ArrayList<ArrayList<Object>> data = new ArrayList<>();
+        ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0);nonEditableColumns.add(1);
+        ArrayList<Object> courseNames = new ArrayList<>();
+        ArrayList<Object> sections = new ArrayList<>();
+        try {
+            Statement statement = connection.createStatement();
+
+            //gets all sections of student
+            ResultSet rs = statement.executeQuery("SELECT section_id FROM enrollment WHERE student_id = " + id);
+
+            ArrayList<Integer> courseIds = new ArrayList<>();
+            while (rs != null && rs.next()){
+                sections.add(rs.getObject(1));
+            }
+            //gets the courses of the sections
+            System.out.println(sections);
+            for (Object i : sections)
+            {
+                Integer section_id = (Integer)i;
+                rs = statement.executeQuery("SELECT course_id FROM section WHERE id = " + section_id);
+                rs.next();
+                courseIds.add(rs.getInt("course_id"));
+            }
+            for (Integer i : courseIds)
+            {
+                rs = statement.executeQuery("SELECT title FROM course WHERE id = " + i);
+                rs.next();
+                courseNames.add(rs.getObject("title"));
+            }
+
+
+
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+        Object[][] tableData = new Object[0][0];
+        if (!sections.isEmpty())
+            tableData = new Object[sections.size()][courseNames.size()];
+        for (int i = 0; i < sections.size(); i++)
+        {
+            tableData[i] = new Object[]{sections.get(i), courseNames.get(i)};
+        }
+        Table t = new Table(new String[]{"section_id", "course_name"}, tableData, nonEditableColumns);
         t.setVisible(true);
         t.getTableHeader().setReorderingAllowed(false);
         t.getTableHeader().setResizingAllowed(false);
