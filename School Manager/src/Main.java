@@ -8,6 +8,7 @@ public class Main {
             Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/school_manager?useSSL=false","root","password");
             Statement statement = connection.createStatement();
 
+            statement.execute("DROP TABLE IF EXISTS enrollment;");
             statement.execute("DROP TABLE IF EXISTS section;");
             statement.execute("DROP TABLE IF EXISTS teacher;");
             statement.execute("DROP TABLE IF EXISTS student;");
@@ -16,20 +17,20 @@ public class Main {
             statement.execute("CREATE TABLE IF NOT EXISTS teacher(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
             statement.execute("CREATE TABLE IF NOT EXISTS course(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, title TEXT NOT NULL, course_type INTEGER NOT NULL);");
             statement.execute("CREATE TABLE IF NOT EXISTS section(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, " +
-                    "course_id INTEGER, teacher_id INTEGER, " +
+                    "course_id INTEGER NOT NULL, teacher_id INTEGER NOT NULL, " +
                     "FOREIGN KEY (course_id) REFERENCES course(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
                     "FOREIGN KEY (teacher_id) REFERENCES teacher(id) ON DELETE CASCADE ON UPDATE CASCADE);");
-            statement.execute("CREATE TABLE IF NOT EXISTS student(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT, section TEXT);");
+            statement.execute("CREATE TABLE IF NOT EXISTS student(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
+            statement.execute("CREATE TABLE IF NOT EXISTS enrollment(section_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY(section_id, student_id), " +
+                    "FOREIGN KEY(section_id) REFERENCES section(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
+                    "FOREIGN KEY(student_id) REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE);");
             statement.execute("DESCRIBE student;");
             for (int i = 0; i < 25; i++) {
                 String fn = "'Varain" + i + "' ";
-                statement.executeUpdate("INSERT INTO student(first_name, last_name, section) VALUES (" + fn + ", 'Gandikota', '1, 2, 3');");
+                statement.executeUpdate("INSERT INTO student(first_name, last_name) VALUES (" + fn + ", 'Gandikota');");
             }
-            SchoolManagerFrame schoolFrame = new SchoolManagerFrame(statement);
+            SchoolManagerFrame schoolFrame = new SchoolManagerFrame(connection);
 
-
-
-            connection.close();
         }catch (Exception e){
             e.printStackTrace();
         }

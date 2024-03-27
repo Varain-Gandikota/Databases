@@ -18,20 +18,20 @@ public class SchoolManagerFrame extends JFrame{
     private Table studentTable;
     private Table courseTable;
     private Table sectionTable;
-    private Statement statement;
+    private Connection connection;
 
     private JPanel teacherPanel;
     private JPanel studentPanel;
     private JPanel coursePanel;
     private JPanel sectionPanel;
-    public SchoolManagerFrame(Statement statement)
+    public SchoolManagerFrame(Connection connection)
     {
         super("School Manager");
         setSize(1000, 750);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(null);
 
-        this.statement = statement;
+        this.connection = connection;
 
 
         JMenuBar menuBar = new JMenuBar();
@@ -43,6 +43,7 @@ public class SchoolManagerFrame extends JFrame{
         JMenuItem courseMenuItem = new JMenuItem("Courses");
         JMenuItem sectionMenuItem = new JMenuItem("Sections");
 
+
         JMenu viewMenu = new JMenu("View");
         viewMenu.add(teacherMenuItem);
         viewMenu.add(studentMenuItem);
@@ -51,22 +52,75 @@ public class SchoolManagerFrame extends JFrame{
 
         teacherMenuItem.addActionListener(e -> {
             enableView(teacherPanel);
-            teacherMenuItem.setSelected(false);
             viewMenu.setSelected(false);
         });
         studentMenuItem.addActionListener(e -> {
             enableView(studentPanel);
-            teacherMenuItem.setSelected(false);
             viewMenu.setSelected(false);
 
         });
         courseMenuItem.addActionListener(e -> {
+            enableView(coursePanel);
+            viewMenu.setSelected(false);
 
         });
         sectionMenuItem.addActionListener(e -> {
-
+            enableView(sectionPanel);
+            viewMenu.setSelected(false);
         });
         JMenu fileMenu = new JMenu("File");
+
+        JMenuItem exportDataItem = new JMenuItem("Export Data");
+        JMenuItem importDataItem = new JMenuItem("Import Data");
+        JMenuItem purgeItem = new JMenuItem("Purge Data");
+        JMenuItem exitItem = new JMenuItem("Exit");
+
+        fileMenu.add(exportDataItem);
+        fileMenu.add(importDataItem);
+        fileMenu.add(purgeItem);
+        fileMenu.add(exitItem);
+
+        exitItem.addActionListener(e -> {
+            dispose();
+            System.out.println("Closed Program");
+            try{
+                connection.close();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+            System.exit(0);
+        });
+        purgeItem.addActionListener(e -> {
+            try{
+                Statement statement = connection.createStatement();
+                statement.execute("DROP TABLE IF EXISTS enrollment;");
+                statement.execute("DROP TABLE IF EXISTS section;");
+                statement.execute("DROP TABLE IF EXISTS teacher;");
+                statement.execute("DROP TABLE IF EXISTS student;");
+                statement.execute("DROP TABLE IF EXISTS course;");
+
+                statement.execute("CREATE TABLE IF NOT EXISTS teacher(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
+                statement.execute("CREATE TABLE IF NOT EXISTS course(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, title TEXT NOT NULL, course_type INTEGER NOT NULL);");
+                statement.execute("CREATE TABLE IF NOT EXISTS section(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, " +
+                        "course_id INTEGER NOT NULL, teacher_id INTEGER NOT NULL, " +
+                        "FOREIGN KEY (course_id) REFERENCES course(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
+                        "FOREIGN KEY (teacher_id) REFERENCES teacher(id) ON DELETE CASCADE ON UPDATE CASCADE);");
+                statement.execute("CREATE TABLE IF NOT EXISTS student(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
+                statement.execute("CREATE TABLE IF NOT EXISTS enrollment(section_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY(section_id, student_id), " +
+                        "FOREIGN KEY(section_id) REFERENCES section(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
+                        "FOREIGN KEY(student_id) REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE);");
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+            dispose();
+            System.out.println("Closed Program");
+            try{
+                connection.close();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+            System.exit(0);
+        });
         JMenu helpMenu = new JMenu("Help");
 
         menuBar.add(fileMenu);
@@ -76,31 +130,15 @@ public class SchoolManagerFrame extends JFrame{
         setJMenuBar(menuBar);
 
 
-        try{
-
-            ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(3);
-
-            ResultSet rs = statement.executeQuery("SELECT * FROM teacher WHERE id >= 1;");
-            teacherTable = constructTable(rs, new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
-
-            rs = statement.executeQuery("SELECT * FROM student WHERE id >= 1;");
-            studentTable = constructTable(rs, new String[]{"id", "first_name", "last_name", "section"}, nonEditableColumns);
-            studentTable.getSelectionModel().addListSelectionListener(e -> {
-                System.out.println(studentTable.getSelectedRow());
-                System.out.println(studentTable.getColumnModel().getColumn(studentTable.getSelectedColumn()));
-            });
-
-            rs = statement.executeQuery("SELECT * FROM course WHERE id >= 1;");
-            courseTable = constructTable(rs, new String[]{"id", "title", "type"}, nonEditableColumns);
-
-        }catch (Exception e)
-        {
-            e.printStackTrace();
-        }
+        constructJTables();
         JScrollPane teacherScrollPane = new JScrollPane(teacherTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         JScrollPane studentScrollPane = new JScrollPane(studentTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        JScrollPane courseScrollPane = new JScrollPane(courseTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
         teacherScrollPane.setBounds(10, 10, 500, 550);
         studentScrollPane.setBounds(10, 10, 500, 550);
+        courseScrollPane.setBounds(10, 10, 500, 550);
+
         teacherPanel = new JPanel(null);
         studentPanel = new JPanel(null);
         coursePanel = new JPanel(null);
@@ -112,12 +150,39 @@ public class SchoolManagerFrame extends JFrame{
         studentPanel.add(studentScrollPane);
         studentPanel.setSize(getWidth(), getHeight());
 
+        // student buttons and stuff
+
+        coursePanel.add(courseScrollPane);
+        coursePanel.setSize(getWidth(), getHeight());
+
         allGUIitems = new ArrayList<>(); allGUIitems.add(teacherPanel);allGUIitems.add(studentPanel);allGUIitems.add(coursePanel);allGUIitems.add(sectionPanel);
         add(teacherPanel);
         add(studentPanel);
+        add(coursePanel);
+        add(sectionPanel);
         enableView(teacherPanel);
+        setResizable(false);
         setVisible(true);
 
+    }
+    public void constructJTables()
+    {
+        ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(3);
+        teacherTable = constructTable("SELECT * FROM teacher WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
+        studentTable = constructTable("SELECT * FROM student WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
+        courseTable = constructTable("SELECT * FROM course WHERE id >= 1;", new String[]{"id", "title", "type"}, nonEditableColumns);
+
+        studentTable.getSelectionModel().addListSelectionListener(e -> {
+            if (studentTable.getSelectedRow() == -1)
+                return;
+            Object[] dataInRow = new Object[studentTable.getColumnCount()];
+            for (int i = 0; i < studentTable.getColumnCount(); i++)
+            {
+                System.out.println(studentTable.getValueAt(studentTable.getSelectedRow(), i));
+            }
+            System.out.println(studentTable.getColumnModel().getColumn(studentTable.getSelectedColumn()));
+            studentTable.clearSelection();
+        });
     }
     public void enableView(JPanel panel)
     {
@@ -134,10 +199,13 @@ public class SchoolManagerFrame extends JFrame{
             }
         }
     }
-    public Table constructTable(ResultSet rs, String[] columnNames, ArrayList<Integer> nonEditableColumns)
+    public Table constructTable(String sql, String[] columnNames, ArrayList<Integer> nonEditableColumns)
     {
+
         ArrayList<ArrayList<Object>> data = new ArrayList<>();
         try {
+            Statement statement = connection.createStatement();
+            ResultSet rs = statement.executeQuery(sql);
             while (rs != null && rs.next()){
                 ArrayList<Object> a1 = new ArrayList<>();
                 for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++)
@@ -161,8 +229,8 @@ public class SchoolManagerFrame extends JFrame{
         t.getTableHeader().setReorderingAllowed(false);
         t.getTableHeader().setResizingAllowed(false);
         return t;
-
     }
+
 }
 class VisualList<E> extends JList{
     private ArrayList<E> data;
@@ -209,12 +277,12 @@ class Table extends JTable{
     }
 
 }
-class Panel extends JPanel{
-
-    public Panel(Frame f, LayoutManager l)
+class Button extends JButton{
+    public Button(String title, int x, int y, int width, int height, JPanel panel)
     {
-        super(l);
-        setBounds(10, 10, getWidth(), getHeight());
-        f.add(this);
+        super(title);
+        setBounds(x, y, width, height);
+        setVisible(true);
+        panel.add(this);
     }
 }
