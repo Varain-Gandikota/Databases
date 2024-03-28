@@ -25,6 +25,14 @@ public class SchoolManagerFrame extends JFrame{
     private JPanel studentPanel;
     private JPanel coursePanel;
     private JPanel sectionPanel;
+    private TextFieldWithLabel studentFirstName;
+    private TextFieldWithLabel studentLastName;
+    private Button addStudentButton;
+    private JScrollPane scheduleScrollPane;
+    private JScrollPane teacherScrollPane;
+    private JScrollPane studentScrollPane;
+    private JScrollPane courseScrollPane;
+    private Button removeStudentButton;
     public SchoolManagerFrame(Connection connection)
     {
         super("School Manager");
@@ -131,15 +139,16 @@ public class SchoolManagerFrame extends JFrame{
         setJMenuBar(menuBar);
 
 
+
+        teacherScrollPane = new JScrollPane(teacherTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        studentScrollPane = new JScrollPane(studentTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        courseScrollPane = new JScrollPane(courseTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scheduleScrollPane = new JScrollPane(studentScheduleTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         constructJTables();
-        JScrollPane teacherScrollPane = new JScrollPane(teacherTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        JScrollPane studentScrollPane = new JScrollPane(studentTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        JScrollPane courseScrollPane = new JScrollPane(courseTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        JScrollPane scheduleScrollPane = new JScrollPane(studentScheduleTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         teacherScrollPane.setBounds(10, 10, 500, 550);
         studentScrollPane.setBounds(10, 10, 500, 550);
         courseScrollPane.setBounds(10, 10, 500, 550);
-        scheduleScrollPane.setBounds(520, 10, 250, 100);
+        scheduleScrollPane.setBounds(520, 10, 350, 100);
 
         teacherPanel = new JPanel(null);
         studentPanel = new JPanel(null);
@@ -153,7 +162,54 @@ public class SchoolManagerFrame extends JFrame{
         studentPanel.add(scheduleScrollPane);
         studentPanel.setSize(getWidth(), getHeight());
 
-        studentSaveChanges = new Button("Save Changes", 550, 550, 150, 50, studentPanel);
+
+        studentSaveChanges = new Button("Save Changes to Database", 625, 500, 300, 50, studentPanel);
+        addStudentButton = new Button("Add Student", 625, 300, 300, 50, studentPanel);
+        removeStudentButton = new Button("Remove Selected Student", 625, 400, 300, 50, studentPanel);
+        studentSaveChanges.addActionListener(e -> {
+            DefaultTableModel model = (DefaultTableModel)studentTable.getModel();
+            try{
+                Statement s = connection.createStatement();
+                for (int row = 0; row < studentTable.getRowCount(); row++)
+                {
+                    String sqlCommand = String.format("UPDATE student SET first_name= '%s', last_name = '%s' WHERE id = %s",
+                            studentTable.getValueAt(row, 1), studentTable.getValueAt(row, 2), studentTable.getValueAt(row, 0));
+                    s.executeUpdate(sqlCommand);
+                }
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+
+
+        });
+        addStudentButton.addActionListener(e -> {
+            if (studentFirstName.getText().isEmpty() || studentLastName.getText().isEmpty())
+                return;
+            try{
+                Statement s = connection.createStatement();
+                String command = String.format("INSERT INTO student (first_name, last_name) VALUES ('%s', '%s');",
+                        studentFirstName.getText(),studentLastName.getText());
+                s.executeUpdate(command);
+                constructJTables();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+        });
+        removeStudentButton.addActionListener(e -> {
+            if (studentTable.getSelectedRow() == -1)
+                return;
+            try {
+                Statement s = connection.createStatement();
+                s.executeUpdate("DELETE FROM student WHERE id = " + (studentTable.getSelectedRow()+1) + ";");
+                constructJTables();
+                studentTable.clearSelection();
+                studentScheduleTable = constructScheduleTable((Integer)studentTable.getValueAt(studentTable.getSelectedRow(), 0));
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+        });
+        studentFirstName = new TextFieldWithLabel("First Name: ", 625, 150, 300, 50, studentPanel);
+        studentLastName = new TextFieldWithLabel("Last Name: ", 625, 225, 300, 50, studentPanel);
 
         coursePanel.add(courseScrollPane);
         coursePanel.setSize(getWidth(), getHeight());
@@ -174,20 +230,27 @@ public class SchoolManagerFrame extends JFrame{
         teacherTable = constructTable("SELECT * FROM teacher WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
         studentTable = constructTable("SELECT * FROM student WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
         courseTable = constructTable("SELECT * FROM course WHERE id >= 1;", new String[]{"id", "title", "type"}, nonEditableColumns);
+
+        teacherScrollPane.setViewportView(teacherTable);
+        studentScrollPane.setViewportView(studentTable);
+        courseScrollPane.setViewportView(courseTable);
+
         nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1);
 
         studentScheduleTable = constructScheduleTable(1);
         studentTable.getSelectionModel().addListSelectionListener(e -> {
             if (studentTable.getSelectedRow() == -1)
                 return;
-            Object[] dataInRow = new Object[studentTable.getColumnCount()];
+            DefaultTableModel model = (DefaultTableModel)studentTable.getModel();
+
+
+            studentScheduleTable = constructScheduleTable((Integer)studentTable.getValueAt(studentTable.getSelectedRow(), 0));
+            scheduleScrollPane.setViewportView(studentScheduleTable);
             for (int i = 0; i < studentTable.getColumnCount(); i++)
             {
                 System.out.println(studentTable.getValueAt(studentTable.getSelectedRow(), i));
-
             }
             System.out.println(studentTable.getColumnModel().getColumn(studentTable.getSelectedColumn()));
-            studentTable.clearSelection();
         });
     }
     public void enableView(JPanel panel)
@@ -340,5 +403,17 @@ class Button extends JButton{
         setBounds(x, y, width, height);
         setVisible(true);
         panel.add(this);
+    }
+}
+class TextFieldWithLabel extends JTextField{
+    private JLabel label;
+    public TextFieldWithLabel(String title, int x, int y, int width, int height, JPanel p)
+    {
+        super();
+        setBounds(x, y, width, height);
+        label = new JLabel(title);
+        label.setBounds(x-100, y, width, height);
+        p.add(this);
+        p.add(label);
     }
 }
