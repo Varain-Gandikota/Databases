@@ -163,7 +163,7 @@ public class SchoolManagerFrame extends JFrame{
         studentPanel.setSize(getWidth(), getHeight());
 
 
-        studentSaveChanges = new Button("Save Changes to Database", 625, 500, 300, 50, studentPanel);
+        studentSaveChanges = new Button("Save Alterations to Database", 625, 500, 300, 50, studentPanel);
         addStudentButton = new Button("Add Student", 625, 300, 300, 50, studentPanel);
         removeStudentButton = new Button("Remove Selected Student", 625, 400, 300, 50, studentPanel);
         studentSaveChanges.addActionListener(e -> {
@@ -200,10 +200,10 @@ public class SchoolManagerFrame extends JFrame{
                 return;
             try {
                 Statement s = connection.createStatement();
-                s.executeUpdate("DELETE FROM student WHERE id = " + (studentTable.getSelectedRow()+1) + ";");
+                s.executeUpdate("DELETE FROM student WHERE id = " + (Integer)studentTable.getValueAt(studentTable.getSelectedRow(), 0) + ";");
                 constructJTables();
                 studentTable.clearSelection();
-                studentScheduleTable = constructScheduleTable((Integer)studentTable.getValueAt(studentTable.getSelectedRow(), 0));
+                scheduleScrollPane.setViewportView(null);
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -237,7 +237,7 @@ public class SchoolManagerFrame extends JFrame{
 
         nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1);
 
-        studentScheduleTable = constructScheduleTable(1);
+        studentScheduleTable = null;
         studentTable.getSelectionModel().addListSelectionListener(e -> {
             if (studentTable.getSelectedRow() == -1)
                 return;
