@@ -1,14 +1,14 @@
 import javax.print.attribute.standard.JobMediaSheetsSupported;
 import javax.swing.*;
+import javax.swing.plaf.nimbus.State;
 import javax.swing.table.DefaultTableModel;
+import javax.xml.transform.Result;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Ellipse2D;
 import java.io.ObjectOutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.sql.*;
-import java.util.Objects;
 
 public class SchoolManagerFrame extends JFrame{
 
@@ -48,6 +48,14 @@ public class SchoolManagerFrame extends JFrame{
     private Button addCourseButton;
     private Button removeCourseButton;
     private Button saveCourseChangesButton;
+    private JScrollPane sectionScrollPane;
+    private ArrayList<Integer> coursesAvailableArrayList;
+    private ArrayList<Integer> teachersAvailableArrayList;
+    private ComboBox<Integer> coursesAvailable;
+    private ComboBox<Integer> teachersAvailable;
+    private JScrollPane rosterScrollPane;
+    private Table rosterTable;
+
     public SchoolManagerFrame(Connection connection)
     {
         super("School Manager");
@@ -158,13 +166,19 @@ public class SchoolManagerFrame extends JFrame{
         courseScrollPane = new JScrollPane(courseTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scheduleScrollPane = new JScrollPane(studentScheduleTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         sectionsTaughtScrollPane = new JScrollPane(sectionsTaughtTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        sectionScrollPane = new JScrollPane(sectionTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        rosterScrollPane = new JScrollPane(rosterTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+
 
         constructJTables();
         teacherScrollPane.setBounds(10, 10, 500, 550);
         studentScrollPane.setBounds(10, 10, 500, 550);
         courseScrollPane.setBounds(10, 10, 500, 550);
+        sectionScrollPane.setBounds(10, 10, 500, 550);
         scheduleScrollPane.setBounds(520, 10, 350, 100);
         sectionsTaughtScrollPane.setBounds(520, 10, 350, 100);
+        rosterScrollPane.setBounds(520, 10, 350, 100);
 
 
         teacherPanel = new JPanel(null);
@@ -179,6 +193,11 @@ public class SchoolManagerFrame extends JFrame{
         studentPanel.add(studentScrollPane);
         studentPanel.add(scheduleScrollPane);
         studentPanel.setSize(getWidth(), getHeight());
+
+        sectionPanel.add(sectionScrollPane);
+        sectionPanel.add(rosterScrollPane);
+        sectionPanel.setSize(getWidth(), getHeight());
+
 
         studentSaveChanges = new Button("Save Alterations to Database", 625, 500, 300, 50, studentPanel);
         addStudentButton = new Button("Add Student", 625, 300, 300, 50, studentPanel);
@@ -201,6 +220,7 @@ public class SchoolManagerFrame extends JFrame{
                             courseTable.getValueAt(row, 1), courseTable.getValueAt(row, 2), courseTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
+                updateActiveTeachersAndCourses();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -221,6 +241,7 @@ public class SchoolManagerFrame extends JFrame{
                 s.executeUpdate(command);
                 courseName.setText("");
                 constructJTables();
+                updateActiveTeachersAndCourses();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -234,6 +255,7 @@ public class SchoolManagerFrame extends JFrame{
                 constructJTables();
                 courseTable.clearSelection();
                 courseName.setText("");
+                updateActiveTeachersAndCourses();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -247,6 +269,7 @@ public class SchoolManagerFrame extends JFrame{
                             teacherTable.getValueAt(row, 1), teacherTable.getValueAt(row, 2), teacherTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
+                updateActiveTeachersAndCourses();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -260,6 +283,7 @@ public class SchoolManagerFrame extends JFrame{
                         teacherFirstName.getText(),teacherLastName.getText());
                 s.executeUpdate(command);
                 constructJTables();
+                updateActiveTeachersAndCourses();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -273,6 +297,7 @@ public class SchoolManagerFrame extends JFrame{
                 constructJTables();
                 teacherTable.clearSelection();
                 sectionsTaughtScrollPane.setViewportView(null);
+                updateActiveTeachersAndCourses();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -286,6 +311,8 @@ public class SchoolManagerFrame extends JFrame{
                             studentTable.getValueAt(row, 1), studentTable.getValueAt(row, 2), studentTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
+                rosterTable = constructRosterTable(0);
+                rosterScrollPane.setViewportView(rosterTable);
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -330,6 +357,15 @@ public class SchoolManagerFrame extends JFrame{
         courseACAbutton = new RadioButton("Academic (0)",625, 125, 300, 25, courseTypeButtonGroup, coursePanel);
         courseKAPbutton = new RadioButton("KAP (1)",625, 150, 300, 25, courseTypeButtonGroup, coursePanel);
         courseAPbutton = new RadioButton("AP (2)",625, 175, 300, 25, courseTypeButtonGroup, coursePanel);
+
+        teachersAvailableArrayList = new ArrayList<>();
+        coursesAvailableArrayList = new ArrayList<>();
+
+        JLabel teacherAvailableText = new JLabel("Available Teachers (ID):"); teacherAvailableText.setBounds(525, 150, 250, 25); sectionPanel.add(teacherAvailableText);
+        JLabel coursesAvailableText = new JLabel("Available Courses  (ID):"); coursesAvailableText.setBounds(525, 200, 250, 25); sectionPanel.add(coursesAvailableText);
+        teachersAvailable = new ComboBox<>(700, 150, 150, 25, sectionPanel, teachersAvailableArrayList);
+        coursesAvailable = new ComboBox<>(700, 200, 150, 25, sectionPanel, coursesAvailableArrayList);
+
         courseACAbutton.addActionListener(e -> {
             if (courseTable.getSelectedRow() == -1)
                 return;
@@ -350,6 +386,7 @@ public class SchoolManagerFrame extends JFrame{
         coursePanel.setSize(getWidth(), getHeight());
 
         allGUIitems = new ArrayList<>(); allGUIitems.add(teacherPanel);allGUIitems.add(studentPanel);allGUIitems.add(coursePanel);allGUIitems.add(sectionPanel);
+        updateActiveTeachersAndCourses();
         add(teacherPanel);
         add(studentPanel);
         add(coursePanel);
@@ -359,6 +396,27 @@ public class SchoolManagerFrame extends JFrame{
         setVisible(true);
 
     }
+    public void updateActiveTeachersAndCourses()
+    {
+        try{
+
+            Statement s = connection.createStatement();
+            ResultSet rs = s.executeQuery("SELECT id FROM teacher WHERE id >= 1");
+            teachersAvailableArrayList.clear();
+            coursesAvailableArrayList.clear();
+            while (rs != null && rs.next()){
+                teachersAvailableArrayList.add(rs.getInt(1));
+            }
+            rs = s.executeQuery("SELECT id FROM course WHERE id >= 1");
+            while (rs != null && rs.next()){
+                coursesAvailableArrayList.add(rs.getInt(1));
+            }
+            coursesAvailable.setItems(coursesAvailableArrayList);
+            teachersAvailable.setItems(teachersAvailableArrayList);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
     public void constructJTables()
     {
         ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(3);
@@ -366,19 +424,42 @@ public class SchoolManagerFrame extends JFrame{
         studentTable = constructTable("SELECT * FROM student WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
         nonEditableColumns.add(2);
         courseTable = constructTable("SELECT * FROM course WHERE id >= 1;", new String[]{"id", "title", "type"}, nonEditableColumns);
+        nonEditableColumns.add(1);
+        sectionTable = constructTable("SELECT * FROM section WHERE id >= 1;", new String[]{"id", "course_id", "teacher_id"}, nonEditableColumns);
+
+
+
         teacherScrollPane.setViewportView(teacherTable);
         studentScrollPane.setViewportView(studentTable);
         courseScrollPane.setViewportView(courseTable);
+        sectionScrollPane.setViewportView(sectionTable);
+
 
         nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1);
 
         studentScheduleTable = null;
         sectionsTaughtTable = null;
+        rosterTable = null;
+        sectionTable.getSelectionModel().addListSelectionListener(e -> {
+            if (sectionTable.getSelectedRow() == -1)
+                return;
+            rosterTable = constructRosterTable((Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0));
+            rosterScrollPane.setViewportView(rosterTable);
+
+            teacherTable.clearSelection();
+            courseTable.clearSelection();
+            studentTable.clearSelection();
+        });
         studentTable.getSelectionModel().addListSelectionListener(e -> {
             if (studentTable.getSelectedRow() == -1)
                 return;
             studentScheduleTable = constructScheduleTable((Integer)studentTable.getValueAt(studentTable.getSelectedRow(), 0));
             scheduleScrollPane.setViewportView(studentScheduleTable);
+
+            teacherTable.clearSelection();
+            courseTable.clearSelection();
+            sectionTable.clearSelection();
+
         });
         teacherTable.getSelectionModel().addListSelectionListener(e -> {
             if (teacherTable.getSelectedRow() == -1)
@@ -388,6 +469,10 @@ public class SchoolManagerFrame extends JFrame{
 
             studentScheduleTable = constructScheduleTable(0);
             scheduleScrollPane.setViewportView(studentScheduleTable);
+
+            studentTable.clearSelection();
+            courseTable.clearSelection();
+            sectionTable.clearSelection();
         });
         courseTable.getSelectionModel().addListSelectionListener(e -> {
             if (courseTable.getSelectedRow() == -1)
@@ -402,6 +487,16 @@ public class SchoolManagerFrame extends JFrame{
                 bm = courseAPbutton.getModel();
             courseTypeButtonGroup.setSelected(bm, true);
             courseName.setText((String)courseTable.getValueAt(courseTable.getSelectedRow(), 1));
+
+            sectionsTaughtTable = constructSectionTaughtTable(0);
+            sectionsTaughtScrollPane.setViewportView(sectionsTaughtTable);
+
+            studentScheduleTable = constructScheduleTable(0);
+            scheduleScrollPane.setViewportView(studentScheduleTable);
+
+            teacherTable.clearSelection();
+            studentTable.clearSelection();
+            //sectionTable.clearSelection();
         });
     }
     public void enableView(JPanel panel)
@@ -411,6 +506,58 @@ public class SchoolManagerFrame extends JFrame{
             j.setVisible(j == panel);
             j.setEnabled(j == panel);
         }
+    }
+    public Table constructRosterTable(int sectionId)
+    {
+        ArrayList<String> studentFirstNames = new ArrayList<>();
+        ArrayList<String> studentLastNames = new ArrayList<>();
+        ArrayList<Integer> studentIds = new ArrayList<>();
+        try {
+
+            Statement s = connection.createStatement();
+            ResultSet rs = s.executeQuery("SELECT student_id FROM enrollment WHERE section_id = " + sectionId + ";" );
+            while (rs != null && rs.next()){
+                studentIds.add(rs.getInt("student_id"));
+            }
+            System.out.println("student ids: " + studentIds);
+            for (Integer id : studentIds)
+            {
+                String sqlCommand = String.format("SELECT first_name, last_name FROM student WHERE id = %d", id);
+                rs = s.executeQuery(sqlCommand);
+                rs.next();
+                studentFirstNames.add(rs.getString("first_name"));
+                studentLastNames.add(rs.getString("last_name"));
+            }
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        ArrayList<ArrayList<Object>> data = new ArrayList<>();
+        for (int i = 0; i < studentIds.size(); i++){
+            ArrayList<Object> a = new ArrayList<>();
+            a.add(studentLastNames.get(i));
+            a.add(studentFirstNames.get(i));
+            a.add(studentIds.get(i));
+            data.add(a);
+        }
+        data.sort((o1, o2) -> {
+            String os1 = (String)o1.get(0);
+            String os2 = (String)o2.get(0);
+            return os1.compareTo(os2);
+        });
+        ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1); nonEditableColumns.add(2);
+        Object[][] dataArray = new Object[0][0];
+        if (data.size()!= 0)
+            dataArray = new Object[data.size()][data.get(0).size()];
+        for (int i = 0; i < data.size(); i++)
+        {
+            dataArray[i] = data.get(i).toArray();
+        }
+        Table t = new Table(new String[]{"last_name", "first_name", "student_id"}, dataArray, nonEditableColumns);
+        t.setVisible(true);
+        t.getTableHeader().setReorderingAllowed(false);
+        t.getTableHeader().setResizingAllowed(false);
+        return t;
     }
     public Table constructTable(String sql, String[] columnNames, ArrayList<Integer> nonEditableColumns)
     {
@@ -615,5 +762,20 @@ class RadioButton extends JRadioButton{
         gp.add(this);
         panel.add(this);
 
+    }
+}
+class ComboBox<E> extends JComboBox<E>{
+    public ComboBox(int x, int y, int width, int height, JPanel panel, ArrayList<E> items){
+        super();
+        setBounds(x, y, width, height);
+        for (E item : items)
+            addItem(item);
+        panel.add(this);
+
+    }
+    public void setItems(ArrayList<E> items){
+        removeAllItems();
+        for (E item : items)
+            addItem(item);
     }
 }

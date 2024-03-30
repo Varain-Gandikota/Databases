@@ -33,7 +33,9 @@ public class Main {
             statement.executeUpdate("INSERT INTO teacher(first_name, last_name) VALUES ('The Goated', 'GUY');");
             statement.executeUpdate("INSERT INTO course(title, course_type) VALUES ('Unity Game Development', 1);");
             statement.executeUpdate("INSERT INTO section(course_id, teacher_id) VALUES (1, 1)");
+            statement.executeUpdate("INSERT INTO section(course_id, teacher_id) VALUES (1, 1)");
             statement.executeUpdate("INSERT INTO enrollment(section_id, student_id) VALUES (1, 1)");
+            statement.executeUpdate("INSERT INTO enrollment(section_id, student_id) VALUES (1, 3)");
             SchoolManagerFrame schoolFrame = new SchoolManagerFrame(connection);
 
         }catch (Exception e){
