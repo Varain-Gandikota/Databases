@@ -50,9 +50,11 @@ public class SchoolManagerFrame extends JFrame{
     private Button saveCourseChangesButton;
     private JScrollPane sectionScrollPane;
     private ArrayList<Integer> coursesAvailableArrayList;
+    private ArrayList<Integer> studentsAvailableArrayList;
     private ArrayList<Integer> teachersAvailableArrayList;
     private ComboBox<Integer> coursesAvailable;
     private ComboBox<Integer> teachersAvailable;
+    private ComboBox<Integer> studentsAvailable;
     private JScrollPane rosterScrollPane;
     private Table rosterTable;
 
@@ -84,6 +86,10 @@ public class SchoolManagerFrame extends JFrame{
 
         teacherMenuItem.addActionListener(e -> {
             enableView(teacherPanel);
+            sectionsTaughtTable = constructSectionTaughtTable(0);
+            sectionsTaughtScrollPane.setViewportView(sectionsTaughtTable);
+            studentTable.clearSelection();
+            
             viewMenu.setSelected(false);
         });
         studentMenuItem.addActionListener(e -> {
@@ -98,6 +104,9 @@ public class SchoolManagerFrame extends JFrame{
         });
         sectionMenuItem.addActionListener(e -> {
             enableView(sectionPanel);
+            constructRosterTable(0);
+            rosterTable.clearSelection();
+            sectionTable.clearSelection();
             viewMenu.setSelected(false);
         });
         JMenu fileMenu = new JMenu("File");
@@ -211,6 +220,26 @@ public class SchoolManagerFrame extends JFrame{
         addCourseButton = new Button("Add Course", 625, 300, 300, 50, coursePanel);
         removeCourseButton = new Button("Remove Selected Course", 625, 400, 300, 50, coursePanel);
 
+        Button addStudentToRosterButton = new Button("Add student to roster", 690, 300, 170, 25, sectionPanel);
+        Button removeStudentToRosterButton = new Button("Remove selected student from roster", 640, 350, 270, 25, sectionPanel);//32
+        addStudentToRosterButton.addActionListener(e -> {
+            try{
+                if (studentsAvailable.getSelectedItem() == null || sectionTable.getRowCount() == 0)
+                    return;
+                Statement s = connection.createStatement();
+                Integer selectedId = (Integer)studentsAvailable.getSelectedItem();
+                Integer selectedSectionId = (Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0);
+                String sql = String.format("INSERT INTO enrollment(section_id, student_id) VALUES (%d, %d);", selectedSectionId, selectedId);
+                s.executeUpdate(sql);
+                rosterTable = constructRosterTable(selectedSectionId);
+                rosterScrollPane.setViewportView(rosterTable);
+                updateAvailableStudentsToAddToRoster();
+                updateActiveTeachersAndCourses();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+        });
+
         saveCourseChangesButton.addActionListener(e -> {
             try{
                 Statement s = connection.createStatement();
@@ -263,13 +292,14 @@ public class SchoolManagerFrame extends JFrame{
         teacherSaveChanges.addActionListener(e -> {
             try{
                 Statement s = connection.createStatement();
-                for (int row = 0; row < studentTable.getRowCount(); row++)
+                for (int row = 0; row < teacherTable.getRowCount(); row++)
                 {
                     String sqlCommand = String.format("UPDATE teacher SET first_name= '%s', last_name = '%s' WHERE id = %s",
                             teacherTable.getValueAt(row, 1), teacherTable.getValueAt(row, 2), teacherTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
                 updateActiveTeachersAndCourses();
+                updateAvailableStudentsToAddToRoster();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -298,6 +328,7 @@ public class SchoolManagerFrame extends JFrame{
                 teacherTable.clearSelection();
                 sectionsTaughtScrollPane.setViewportView(null);
                 updateActiveTeachersAndCourses();
+                updateAvailableStudentsToAddToRoster();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -312,6 +343,7 @@ public class SchoolManagerFrame extends JFrame{
                     s.executeUpdate(sqlCommand);
                 }
                 rosterTable = constructRosterTable(0);
+                updateAvailableStudentsToAddToRoster();
                 rosterScrollPane.setViewportView(rosterTable);
             }catch (Exception e1){
                 e1.printStackTrace();
@@ -325,6 +357,7 @@ public class SchoolManagerFrame extends JFrame{
                 String command = String.format("INSERT INTO student (first_name, last_name) VALUES ('%s', '%s');",
                         studentFirstName.getText(),studentLastName.getText());
                 s.executeUpdate(command);
+                updateAvailableStudentsToAddToRoster();
                 constructJTables();
             }catch (Exception e1){
                 e1.printStackTrace();
@@ -339,6 +372,7 @@ public class SchoolManagerFrame extends JFrame{
                 constructJTables();
                 studentTable.clearSelection();
                 scheduleScrollPane.setViewportView(null);
+                updateAvailableStudentsToAddToRoster();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -359,12 +393,15 @@ public class SchoolManagerFrame extends JFrame{
         courseAPbutton = new RadioButton("AP (2)",625, 175, 300, 25, courseTypeButtonGroup, coursePanel);
 
         teachersAvailableArrayList = new ArrayList<>();
+        studentsAvailableArrayList = new ArrayList<>();
         coursesAvailableArrayList = new ArrayList<>();
 
         JLabel teacherAvailableText = new JLabel("Available Teachers (ID):"); teacherAvailableText.setBounds(525, 150, 250, 25); sectionPanel.add(teacherAvailableText);
         JLabel coursesAvailableText = new JLabel("Available Courses  (ID):"); coursesAvailableText.setBounds(525, 200, 250, 25); sectionPanel.add(coursesAvailableText);
+        JLabel studentsAvailableText = new JLabel("Available students to add (ID):"); studentsAvailableText.setBounds(525, 250, 250, 25); sectionPanel.add(studentsAvailableText);
         teachersAvailable = new ComboBox<>(700, 150, 150, 25, sectionPanel, teachersAvailableArrayList);
         coursesAvailable = new ComboBox<>(700, 200, 150, 25, sectionPanel, coursesAvailableArrayList);
+        studentsAvailable = new ComboBox<>(700, 250, 150, 25, sectionPanel, coursesAvailableArrayList);
 
         courseACAbutton.addActionListener(e -> {
             if (courseTable.getSelectedRow() == -1)
@@ -417,14 +454,43 @@ public class SchoolManagerFrame extends JFrame{
             e.printStackTrace();
         }
     }
+    public void updateAvailableStudentsToAddToRoster()
+    {
+        try {
+            studentsAvailableArrayList.clear();
+            if (rosterTable == null)
+            {
+                studentsAvailable.removeAllItems();
+                return;
+            }
+            Statement s = connection.createStatement();
+            String notIds = "(";
+            for (int row = 0; row < rosterTable.getRowCount(); row++)
+            {
+                notIds += rosterTable.getValueAt(row, 2) + ",";
+            }
+            notIds = notIds.substring(0, notIds.length()-1) + ")";
+            String sql = String.format("SELECT id FROM student WHERE id NOT IN %s;", notIds);
+            if (rosterTable.getRowCount() == 0){
+                sql = "SELECT id FROM student WHERE id >= 1;";
+            }
+            ResultSet rs = s.executeQuery(sql);
+            while (rs != null && rs.next()){
+                studentsAvailableArrayList.add(rs.getInt("id"));
+            }
+            studentsAvailable.setItems(studentsAvailableArrayList);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
     public void constructJTables()
     {
         ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(3);
         teacherTable = constructTable("SELECT * FROM teacher WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
         studentTable = constructTable("SELECT * FROM student WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
-        nonEditableColumns.add(2);
+        nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(2);
         courseTable = constructTable("SELECT * FROM course WHERE id >= 1;", new String[]{"id", "title", "type"}, nonEditableColumns);
-        nonEditableColumns.add(1);
+        nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1); nonEditableColumns.add(2);
         sectionTable = constructTable("SELECT * FROM section WHERE id >= 1;", new String[]{"id", "course_id", "teacher_id"}, nonEditableColumns);
 
 
@@ -440,11 +506,15 @@ public class SchoolManagerFrame extends JFrame{
         studentScheduleTable = null;
         sectionsTaughtTable = null;
         rosterTable = null;
+        teacherTable.getModel().addTableModelListener(e -> {
+            System.out.println("Something");
+        });
         sectionTable.getSelectionModel().addListSelectionListener(e -> {
             if (sectionTable.getSelectedRow() == -1)
                 return;
             rosterTable = constructRosterTable((Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0));
             rosterScrollPane.setViewportView(rosterTable);
+            updateAvailableStudentsToAddToRoster();
 
             teacherTable.clearSelection();
             courseTable.clearSelection();
@@ -557,6 +627,8 @@ public class SchoolManagerFrame extends JFrame{
         t.setVisible(true);
         t.getTableHeader().setReorderingAllowed(false);
         t.getTableHeader().setResizingAllowed(false);
+        rosterTable = t;
+        rosterScrollPane.setViewportView(rosterTable);
         return t;
     }
     public Table constructTable(String sql, String[] columnNames, ArrayList<Integer> nonEditableColumns)
