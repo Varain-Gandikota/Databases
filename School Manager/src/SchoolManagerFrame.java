@@ -89,7 +89,7 @@ public class SchoolManagerFrame extends JFrame{
             sectionsTaughtTable = constructSectionTaughtTable(0);
             sectionsTaughtScrollPane.setViewportView(sectionsTaughtTable);
             studentTable.clearSelection();
-            
+
             viewMenu.setSelected(false);
         });
         studentMenuItem.addActionListener(e -> {
