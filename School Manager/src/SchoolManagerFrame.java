@@ -1,14 +1,11 @@
-import javax.print.attribute.standard.JobMediaSheetsSupported;
+import javax.management.ObjectName;
 import javax.swing.*;
-import javax.swing.plaf.nimbus.State;
 import javax.swing.table.DefaultTableModel;
-import javax.xml.transform.Result;
 import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.Ellipse2D;
-import java.io.ObjectOutputStream;
+import java.nio.file.Files;
 import java.util.*;
 import java.sql.*;
+import java.io.*;
 
 public class SchoolManagerFrame extends JFrame{
 
@@ -25,6 +22,7 @@ public class SchoolManagerFrame extends JFrame{
     private JPanel studentPanel;
     private JPanel coursePanel;
     private JPanel sectionPanel;
+    private JPanel helpPanel;
     private TextFieldWithLabel studentFirstName;
     private TextFieldWithLabel studentLastName;
     private TextFieldWithLabel teacherFirstName;
@@ -78,6 +76,8 @@ public class SchoolManagerFrame extends JFrame{
         JMenuItem sectionMenuItem = new JMenuItem("Sections");
 
 
+
+
         JMenu viewMenu = new JMenu("View");
         viewMenu.add(teacherMenuItem);
         viewMenu.add(studentMenuItem);
@@ -86,27 +86,24 @@ public class SchoolManagerFrame extends JFrame{
 
         teacherMenuItem.addActionListener(e -> {
             enableView(teacherPanel);
-            sectionsTaughtTable = constructSectionTaughtTable(0);
-            sectionsTaughtScrollPane.setViewportView(sectionsTaughtTable);
-            studentTable.clearSelection();
-
+            refreshInformation();
             viewMenu.setSelected(false);
         });
         studentMenuItem.addActionListener(e -> {
             enableView(studentPanel);
+            refreshInformation();
             viewMenu.setSelected(false);
 
         });
         courseMenuItem.addActionListener(e -> {
             enableView(coursePanel);
+            refreshInformation();
             viewMenu.setSelected(false);
 
         });
         sectionMenuItem.addActionListener(e -> {
             enableView(sectionPanel);
-            constructRosterTable(0);
-            rosterTable.clearSelection();
-            sectionTable.clearSelection();
+            refreshInformation();
             viewMenu.setSelected(false);
         });
         JMenu fileMenu = new JMenu("File");
@@ -121,6 +118,38 @@ public class SchoolManagerFrame extends JFrame{
         fileMenu.add(purgeItem);
         fileMenu.add(exitItem);
 
+        exportDataItem.addActionListener(e -> {
+            try{
+                File exportFile = new File("ExportedSchoolManagerInformation.txt");
+                //adds a number to file name until path doesn't exist
+                int i = 1;
+                while (exportFile.exists())
+                {
+                    exportFile = new File("ExportedSchoolManagerInformation (" + i + ").txt");
+                    i+=1;
+                }
+                //variable created to quell this annoying yellow highlight
+                boolean a = exportFile.createNewFile();
+
+                if (exportFile.exists()){
+                    Statement s = connection.createStatement();
+                    FileWriter fw = new FileWriter(exportFile, false);
+                    ArrayList<ArrayList<Object>> teacherTableData = getAllDataFromSQLTable("teacher");
+                    ArrayList<ArrayList<Object>> studentTableData = getAllDataFromSQLTable("student");
+                    ArrayList<ArrayList<Object>> courseTableData = getAllDataFromSQLTable("course");
+                    ArrayList<ArrayList<Object>> sectionTableData = getAllDataFromSQLTable("section");
+                    ArrayList<ArrayList<Object>> enrollmentTableData = getAllDataFromSQLTable("enrollment");
+                    System.out.println(enrollmentTableData);
+                    fw.close();
+                }
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+        });
+
+        importDataItem.addActionListener(e -> {
+
+        });
         exitItem.addActionListener(e -> {
             dispose();
             System.out.println("Closed Program");
@@ -164,6 +193,14 @@ public class SchoolManagerFrame extends JFrame{
         });
         JMenu helpMenu = new JMenu("Help");
 
+        JMenuItem about = new JMenuItem("About");
+        about.addActionListener(e -> {
+            enableView(helpPanel);
+            refreshInformation();
+            helpMenu.setSelected(false);
+        });
+        helpMenu.add(about);
+
         menuBar.add(fileMenu);
         menuBar.add(viewMenu);
         menuBar.add(helpMenu);
@@ -194,6 +231,7 @@ public class SchoolManagerFrame extends JFrame{
         studentPanel = new JPanel(null);
         coursePanel = new JPanel(null);
         sectionPanel = new JPanel(null);
+        helpPanel = new JPanel(null);
 
         teacherPanel.add(teacherScrollPane);
         teacherPanel.add(sectionsTaughtScrollPane);
@@ -206,6 +244,8 @@ public class SchoolManagerFrame extends JFrame{
         sectionPanel.add(sectionScrollPane);
         sectionPanel.add(rosterScrollPane);
         sectionPanel.setSize(getWidth(), getHeight());
+
+        helpPanel.setSize(getWidth(), getHeight());
 
 
         studentSaveChanges = new Button("Save Alterations to Database", 625, 500, 300, 50, studentPanel);
@@ -221,18 +261,66 @@ public class SchoolManagerFrame extends JFrame{
         removeCourseButton = new Button("Remove Selected Course", 625, 400, 300, 50, coursePanel);
 
         Button addStudentToRosterButton = new Button("Add student to roster", 690, 300, 170, 25, sectionPanel);
-        Button removeStudentToRosterButton = new Button("Remove selected student from roster", 640, 350, 270, 25, sectionPanel);//32
+        Button removeStudentFromRosterButton = new Button("Remove selected student from roster", 640, 350, 270, 25, sectionPanel);//32
+        Button addNewSection = new Button("Add new section", 625, 400, 300, 50, sectionPanel);
+        Button removeSelectedSection = new Button("Remove selected section", 625, 475, 300, 50, sectionPanel);
+
+        addNewSection.addActionListener(e -> {
+            if (teachersAvailable.getItemCount() == 0 || coursesAvailable.getItemCount() == 0 || teachersAvailable.getSelectedItem() == null || coursesAvailable.getSelectedItem() == null)
+                return;
+            try{
+                Statement s = connection.createStatement();
+                int teacherId = (Integer)teachersAvailable.getSelectedItem();
+                int courseId = (Integer)coursesAvailable.getSelectedItem();
+
+                String sql = String.format("INSERT INTO section(course_id, teacher_id) VALUES (%d, %d)", courseId, teacherId);
+                s.executeUpdate(sql);
+                refreshInformation();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+        });
+        removeSelectedSection.addActionListener(e -> {
+            if (sectionTable.getSelectedRow() == -1)
+                return;
+            try {
+                Statement s = connection.createStatement();
+                s.executeUpdate("DELETE FROM section WHERE id = " + (Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0) + ";");
+                constructJTables();
+                sectionTable.clearSelection();
+                constructRosterTable(0);
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+        });
+        removeStudentFromRosterButton.addActionListener(e -> {
+            if (rosterTable == null || rosterTable.getSelectedRow() == -1)
+                return;
+            try{
+                Statement s = connection.createStatement();
+
+                int selectedStudentId = (Integer)rosterTable.getValueAt(rosterTable.getSelectedRow(), 2);
+                int selectedSectionId = (Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0);
+                String sql = String.format("DELETE FROM enrollment WHERE student_id = %d AND section_id = %d", selectedStudentId, selectedSectionId);
+                s.executeUpdate(sql);
+                constructRosterTable(selectedSectionId);
+                updateAvailableStudentsToAddToRoster();
+                updateActiveTeachersAndCourses();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+
+        });
         addStudentToRosterButton.addActionListener(e -> {
             try{
-                if (studentsAvailable.getSelectedItem() == null || sectionTable.getRowCount() == 0)
+                if (studentsAvailable.getSelectedItem() == null || sectionTable.getRowCount() == 0 || sectionTable.getSelectedRow() == -1)
                     return;
                 Statement s = connection.createStatement();
                 Integer selectedId = (Integer)studentsAvailable.getSelectedItem();
                 Integer selectedSectionId = (Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0);
                 String sql = String.format("INSERT INTO enrollment(section_id, student_id) VALUES (%d, %d);", selectedSectionId, selectedId);
                 s.executeUpdate(sql);
-                rosterTable = constructRosterTable(selectedSectionId);
-                rosterScrollPane.setViewportView(rosterTable);
+                constructRosterTable(selectedSectionId);
                 updateAvailableStudentsToAddToRoster();
                 updateActiveTeachersAndCourses();
             }catch (Exception e1){
@@ -399,6 +487,12 @@ public class SchoolManagerFrame extends JFrame{
         JLabel teacherAvailableText = new JLabel("Available Teachers (ID):"); teacherAvailableText.setBounds(525, 150, 250, 25); sectionPanel.add(teacherAvailableText);
         JLabel coursesAvailableText = new JLabel("Available Courses  (ID):"); coursesAvailableText.setBounds(525, 200, 250, 25); sectionPanel.add(coursesAvailableText);
         JLabel studentsAvailableText = new JLabel("Available students to add (ID):"); studentsAvailableText.setBounds(525, 250, 250, 25); sectionPanel.add(studentsAvailableText);
+
+        JLabel versionNumber = new JLabel("Version Number: 1.0.16.2024"); versionNumber.setBounds(10 ,10, 450, 100);
+        JLabel applicationCreators = new JLabel("Application Creators: Varain \"the goat\" Gandikota"); applicationCreators.setBounds(10 ,125, 700, 100);
+        versionNumber.setFont(new Font("Serif", Font.PLAIN, 30)); applicationCreators.setFont(new Font("Serif", Font.PLAIN, 30));
+        helpPanel.add(versionNumber); helpPanel.add(applicationCreators);
+
         teachersAvailable = new ComboBox<>(700, 150, 150, 25, sectionPanel, teachersAvailableArrayList);
         coursesAvailable = new ComboBox<>(700, 200, 150, 25, sectionPanel, coursesAvailableArrayList);
         studentsAvailable = new ComboBox<>(700, 250, 150, 25, sectionPanel, coursesAvailableArrayList);
@@ -422,15 +516,46 @@ public class SchoolManagerFrame extends JFrame{
         coursePanel.add(courseScrollPane);
         coursePanel.setSize(getWidth(), getHeight());
 
-        allGUIitems = new ArrayList<>(); allGUIitems.add(teacherPanel);allGUIitems.add(studentPanel);allGUIitems.add(coursePanel);allGUIitems.add(sectionPanel);
+        allGUIitems = new ArrayList<>(); allGUIitems.add(teacherPanel);allGUIitems.add(studentPanel);allGUIitems.add(coursePanel);allGUIitems.add(sectionPanel); allGUIitems.add(helpPanel);
         updateActiveTeachersAndCourses();
         add(teacherPanel);
         add(studentPanel);
         add(coursePanel);
         add(sectionPanel);
+        add(helpPanel);
         enableView(teacherPanel);
         setResizable(false);
         setVisible(true);
+
+    }
+    public ArrayList<ArrayList<Object>> getAllDataFromSQLTable(String tableName){
+        ArrayList<ArrayList<Object>> tableData = new ArrayList<>();
+        try {
+            Statement s = connection.createStatement();
+            String sql = String.format("SELECT * FROM %s;", tableName);
+            ResultSet rs = s.executeQuery(sql);
+            while (rs != null && rs.next())
+            {
+                ArrayList<Object> a = new ArrayList<>();
+                for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++)
+                {
+                    a.add(rs.getObject(i));
+                }
+                tableData.add(a);
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return tableData;
+    }
+    public void refreshInformation()
+    {
+        updateActiveTeachersAndCourses();
+        updateAvailableStudentsToAddToRoster();
+        constructJTables();
+        constructRosterTable(0);
+        constructScheduleTable(0);
+        constructSectionTaughtTable(0);
 
     }
     public void updateActiveTeachersAndCourses()
@@ -516,9 +641,12 @@ public class SchoolManagerFrame extends JFrame{
             rosterScrollPane.setViewportView(rosterTable);
             updateAvailableStudentsToAddToRoster();
 
+            Object selectedTeacherId = sectionTable.getValueAt(sectionTable.getSelectedRow(), 2);
+            teachersAvailable.setSelectedItem(selectedTeacherId);
             teacherTable.clearSelection();
             courseTable.clearSelection();
             studentTable.clearSelection();
+
         });
         studentTable.getSelectionModel().addListSelectionListener(e -> {
             if (studentTable.getSelectedRow() == -1)
@@ -573,8 +701,9 @@ public class SchoolManagerFrame extends JFrame{
     {
         for (JPanel j : allGUIitems)
         {
-            j.setVisible(j == panel);
-            j.setEnabled(j == panel);
+            boolean isPanel = j == panel;
+            j.setVisible(isPanel);
+            j.setEnabled(isPanel);
         }
     }
     public Table constructRosterTable(int sectionId)
@@ -704,6 +833,8 @@ public class SchoolManagerFrame extends JFrame{
             tableData[i] = new Object[]{sections.get(i), courseNames.get(i)};
         }
         Table t = new Table(new String[]{"section_id", "course_name"}, tableData, nonEditableColumns);
+        sectionsTaughtTable = t;
+        sectionsTaughtScrollPane.setViewportView(sectionsTaughtTable);
         t.setVisible(true);
         t.getTableHeader().setReorderingAllowed(false);
         t.getTableHeader().setResizingAllowed(false);
@@ -754,6 +885,8 @@ public class SchoolManagerFrame extends JFrame{
             tableData[i] = new Object[]{sections.get(i), courseNames.get(i)};
         }
         Table t = new Table(new String[]{"section_id", "course_name"}, tableData, nonEditableColumns);
+        studentScheduleTable = t;
+        scheduleScrollPane.setViewportView(studentScheduleTable);
         t.setVisible(true);
         t.getTableHeader().setReorderingAllowed(false);
         t.getTableHeader().setResizingAllowed(false);
