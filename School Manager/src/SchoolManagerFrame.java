@@ -1,5 +1,6 @@
 import javax.management.ObjectName;
 import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.nio.file.Files;
@@ -139,6 +140,13 @@ public class SchoolManagerFrame extends JFrame{
                     ArrayList<ArrayList<Object>> courseTableData = getAllDataFromSQLTable("course");
                     ArrayList<ArrayList<Object>> sectionTableData = getAllDataFromSQLTable("section");
                     ArrayList<ArrayList<Object>> enrollmentTableData = getAllDataFromSQLTable("enrollment");
+
+                    transcribeInformationToFile(exportFile, teacherTableData, fw);
+                    transcribeInformationToFile(exportFile, studentTableData, fw);
+                    transcribeInformationToFile(exportFile, courseTableData, fw);
+                    transcribeInformationToFile(exportFile, sectionTableData, fw);
+                    transcribeInformationToFile(exportFile, enrollmentTableData, fw);
+
                     System.out.println(enrollmentTableData);
                     fw.close();
                 }
@@ -148,6 +156,85 @@ public class SchoolManagerFrame extends JFrame{
         });
 
         importDataItem.addActionListener(e -> {
+            try {
+                Statement statement = connection.createStatement();
+                statement.execute("DROP TABLE IF EXISTS enrollment;");
+                statement.execute("DROP TABLE IF EXISTS section;");
+                statement.execute("DROP TABLE IF EXISTS teacher;");
+                statement.execute("DROP TABLE IF EXISTS student;");
+                statement.execute("DROP TABLE IF EXISTS course;");
+
+                statement.execute("CREATE TABLE IF NOT EXISTS teacher(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
+                statement.execute("CREATE TABLE IF NOT EXISTS course(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, title TEXT NOT NULL, course_type INTEGER NOT NULL);");
+                statement.execute("CREATE TABLE IF NOT EXISTS section(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, " +
+                        "course_id INTEGER NOT NULL, teacher_id INTEGER NOT NULL, " +
+                        "FOREIGN KEY (course_id) REFERENCES course(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
+                        "FOREIGN KEY (teacher_id) REFERENCES teacher(id) ON DELETE CASCADE ON UPDATE CASCADE);");
+                statement.execute("CREATE TABLE IF NOT EXISTS student(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
+                statement.execute("CREATE TABLE IF NOT EXISTS enrollment(section_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY(section_id, student_id), " +
+                        "FOREIGN KEY(section_id) REFERENCES section(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
+                        "FOREIGN KEY(student_id) REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE);");
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+                int result = fileChooser.showOpenDialog(null);
+                if (result != JFileChooser.APPROVE_OPTION)
+                    return;
+
+                File chosenFile = fileChooser.getSelectedFile();
+                if (chosenFile.exists()){
+
+                    Scanner s = new Scanner(chosenFile);
+                    for (int i = 0; i < 5; i++){
+                        ArrayList<String[]> tableData = new ArrayList<>();
+                        while (s.hasNext()){
+                            String row = s.nextLine();
+                            if (row.equals("END")){
+                                break;
+                            }
+                            String[] rowData = row.split(",");
+                            tableData.add(rowData);
+                            System.out.println(Arrays.toString(rowData));
+                        }
+                        //inserts correct data depending on i
+                        switch (i) {
+                            case 0 -> {
+                                for (String[] rowData : tableData) {
+                                    String sql = String.format("INSERT INTO teacher(id, first_name, last_name) VALUES (%s, '%s', '%s');", rowData[0], rowData[1], rowData[2]);
+                                    statement.executeUpdate(sql);
+                                }
+                            }
+                            case 1 -> {
+                                for (String[] rowData : tableData) {
+                                    String sql = String.format("INSERT INTO student(id, first_name, last_name) VALUES (%s, '%s', '%s');", rowData[0], rowData[1], rowData[2]);
+                                    statement.executeUpdate(sql);
+                                }
+                            }
+                            case 2 -> {
+                                for (String[] rowData : tableData) {
+                                    String sql = String.format("INSERT INTO course(id, title, course_type) VALUES (%s, '%s', %s);", rowData[0], rowData[1], rowData[2]);
+                                    statement.executeUpdate(sql);
+                                }
+                            }
+                            case 3 -> {
+                                for (String[] rowData : tableData) {
+                                    String sql = String.format("INSERT INTO section(id, course_id, teacher_id) VALUES (%s, %s, %s);", rowData[0], rowData[1], rowData[2]);
+                                    statement.executeUpdate(sql);
+                                }
+                            }
+                            case 4 -> {
+                                for (String[] rowData : tableData) {
+                                    String sql = String.format("INSERT INTO enrollment(section_id, student_id) VALUES (%s, %s);", rowData[0], rowData[1]);
+                                    statement.executeUpdate(sql);
+                                }
+                            }
+                        }
+                    }
+                }
+                refreshInformation();
+
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
 
         });
         exitItem.addActionListener(e -> {
@@ -527,6 +614,22 @@ public class SchoolManagerFrame extends JFrame{
         setResizable(false);
         setVisible(true);
 
+    }
+    public void transcribeInformationToFile(File f, ArrayList<ArrayList<Object>> data, FileWriter fw){
+        try {
+            String thingToWrite = "";
+            for (ArrayList<Object> dataArrayList : data){
+                for (Object ob : dataArrayList){
+                    thingToWrite += ob + ",";
+                }
+                thingToWrite = thingToWrite.substring(0, thingToWrite.length()-1);
+                thingToWrite+="\n";
+            }
+            thingToWrite += "END\n";
+            fw.write(thingToWrite);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
     public ArrayList<ArrayList<Object>> getAllDataFromSQLTable(String tableName){
         ArrayList<ArrayList<Object>> tableData = new ArrayList<>();

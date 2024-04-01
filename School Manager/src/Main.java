@@ -25,7 +25,7 @@ public class Main {
             statement.execute("CREATE TABLE IF NOT EXISTS enrollment(section_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY(section_id, student_id), " +
                     "FOREIGN KEY(section_id) REFERENCES section(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
                     "FOREIGN KEY(student_id) REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE);");
-            statement.execute("DESCRIBE student;");
+            /*statement.execute("DESCRIBE student;");
             for (int i = 0; i < 25; i++) {
                 String fn = "'Varain" + i + "' ";
                 statement.executeUpdate("INSERT INTO student(first_name, last_name) VALUES (" + fn + ", 'Gandikota');");
@@ -35,7 +35,7 @@ public class Main {
             statement.executeUpdate("INSERT INTO section(course_id, teacher_id) VALUES (1, 1)");
             statement.executeUpdate("INSERT INTO section(course_id, teacher_id) VALUES (1, 1)");
             statement.executeUpdate("INSERT INTO enrollment(section_id, student_id) VALUES (1, 1)");
-            statement.executeUpdate("INSERT INTO enrollment(section_id, student_id) VALUES (1, 3)");
+            statement.executeUpdate("INSERT INTO enrollment(section_id, student_id) VALUES (1, 3)");*/
             SchoolManagerFrame schoolFrame = new SchoolManagerFrame(connection);
 
         }catch (Exception e){
