@@ -367,7 +367,23 @@ public class SchoolManagerFrame extends JFrame{
         Button removeStudentFromRosterButton = new Button("Remove selected student from roster", 640, 350, 270, 25, sectionPanel);//32
         Button addNewSection = new Button("Add new section", 625, 400, 300, 50, sectionPanel);
         Button removeSelectedSection = new Button("Remove selected section", 625, 475, 300, 50, sectionPanel);
+        Button saveSectionChanges = new Button("Save section table changes", 625, 550, 300, 50, sectionPanel);
+        saveSectionChanges.addActionListener(e -> {
+            try{
+                Statement s = connection.createStatement();
+                for (int row = 0; row < sectionTable.getRowCount(); row++)
+                {
+                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s",
+                            sectionTable.getValueAt(row, 1), sectionTable.getValueAt(row, 2), sectionTable.getValueAt(row, 0));
+                    s.executeUpdate(sqlCommand);
+                }
 
+                updateActiveTeachersAndCourses();
+                updateAvailableStudentsToAddToRoster();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+        });
         addNewSection.addActionListener(e -> {
             if (teachersAvailable.getItemCount() == 0 || coursesAvailable.getItemCount() == 0 || teachersAvailable.getSelectedItem() == null || coursesAvailable.getSelectedItem() == null)
                 return;
@@ -599,7 +615,17 @@ public class SchoolManagerFrame extends JFrame{
         helpPanel.add(versionNumber); helpPanel.add(applicationCreators);
 
         teachersAvailable = new ComboBox<>(700, 150, 150, 25, sectionPanel, teachersAvailableArrayList);
+        teachersAvailable.addActionListener(e -> {
+            if (sectionTable.getSelectedRow() == -1 || teachersAvailable.getSelectedItem() == null)
+                return;
+            sectionTable.setValueAt(teachersAvailable.getSelectedItem(), sectionTable.getSelectedRow(), 2);
+        });
         coursesAvailable = new ComboBox<>(700, 200, 150, 25, sectionPanel, coursesAvailableArrayList);
+        coursesAvailable.addActionListener(e -> {
+            if (sectionTable.getSelectedRow() == -1 || coursesAvailable.getSelectedItem() == null)
+                return;
+            sectionTable.setValueAt(coursesAvailable.getSelectedItem(), sectionTable.getSelectedRow(), 1);
+        });
         studentsAvailable = new ComboBox<>(700, 250, 150, 25, sectionPanel, coursesAvailableArrayList);
 
         courseACAbutton.addActionListener(e -> {
