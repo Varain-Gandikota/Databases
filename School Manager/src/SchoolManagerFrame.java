@@ -135,7 +135,19 @@ public class SchoolManagerFrame extends JFrame{
                 if (exportFile.exists()){
                     Statement s = connection.createStatement();
                     FileWriter fw = new FileWriter(exportFile, false);
-                    ArrayList<ArrayList<Object>> teacherTableData = getAllDataFromSQLTable("teacher");
+
+                    ArrayList<ArrayList<Object>> teacherTableData = new ArrayList<>();
+                    String sql = "SELECT * FROM teacher WHERE id >= 1;";
+                    ResultSet rs = s.executeQuery(sql);
+                    while (rs != null && rs.next())
+                    {
+                        ArrayList<Object> a1 = new ArrayList<>();
+                        for (int f = 1; f <= rs.getMetaData().getColumnCount(); i++)
+                        {
+                            a1.add(rs.getObject(i));
+                        }
+                        teacherTableData.add(a1);
+                    }
                     ArrayList<ArrayList<Object>> studentTableData = getAllDataFromSQLTable("student");
                     ArrayList<ArrayList<Object>> courseTableData = getAllDataFromSQLTable("course");
                     ArrayList<ArrayList<Object>> sectionTableData = getAllDataFromSQLTable("section");
@@ -147,7 +159,7 @@ public class SchoolManagerFrame extends JFrame{
                     transcribeInformationToFile(exportFile, sectionTableData, fw);
                     transcribeInformationToFile(exportFile, enrollmentTableData, fw);
 
-                    System.out.println(enrollmentTableData);
+                    System.out.println(teacherTableData);
                     fw.close();
                 }
             }catch (Exception e1){
@@ -174,6 +186,8 @@ public class SchoolManagerFrame extends JFrame{
                 statement.execute("CREATE TABLE IF NOT EXISTS enrollment(section_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY(section_id, student_id), " +
                         "FOREIGN KEY(section_id) REFERENCES section(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
                         "FOREIGN KEY(student_id) REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE);");
+
+                statement.executeUpdate("INSERT INTO teacher(id, first_name, last_name) VALUES (-1, 'No Teacher Assigned', 'No Teacher Assigned');");
                 JFileChooser fileChooser = new JFileChooser();
                 fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
                 int result = fileChooser.showOpenDialog(null);
@@ -266,6 +280,8 @@ public class SchoolManagerFrame extends JFrame{
                 statement.execute("CREATE TABLE IF NOT EXISTS enrollment(section_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY(section_id, student_id), " +
                         "FOREIGN KEY(section_id) REFERENCES section(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
                         "FOREIGN KEY(student_id) REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE);");
+
+                statement.executeUpdate("INSERT INTO teacher(id, first_name, last_name) VALUES (-1, 'No Teacher Assigned', 'No Teacher Assigned');");
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -498,7 +514,9 @@ public class SchoolManagerFrame extends JFrame{
                 return;
             try {
                 Statement s = connection.createStatement();
-                s.executeUpdate("DELETE FROM teacher WHERE id = " + (Integer)teacherTable.getValueAt(teacherTable.getSelectedRow(), 0) + ";");
+                int selectedId = (Integer)teacherTable.getValueAt(teacherTable.getSelectedRow(), 0);
+                s.executeUpdate(String.format("UPDATE section SET teacher_id = -1 WHERE teacher_id = %d", selectedId));
+                s.executeUpdate("DELETE FROM teacher WHERE id = " + selectedId + ";");
                 constructJTables();
                 teacherTable.clearSelection();
                 sectionsTaughtScrollPane.setViewportView(null);
