@@ -51,8 +51,8 @@ public class SchoolManagerFrame extends JFrame{
     private ArrayList<Integer> coursesAvailableArrayList;
     private ArrayList<Integer> studentsAvailableArrayList;
     private ArrayList<Integer> teachersAvailableArrayList;
-    private ComboBox<String> coursesAvailable;
-    private ComboBox<String> teachersAvailable;
+    private ComboBox<Object> coursesAvailable;
+    private ComboBox<Object> teachersAvailable;
     private ComboBox<Object> studentsAvailable;
     private JScrollPane rosterScrollPane;
     private Table rosterTable;
@@ -375,12 +375,13 @@ public class SchoolManagerFrame extends JFrame{
                 Statement s = connection.createStatement();
                 for (int row = 0; row < sectionTable.getRowCount(); row++)
                 {
-                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s;",
-                            sectionTable.getValueAt(row, 1), sectionTable.getValueAt(row, 2), sectionTable.getValueAt(row, 0));
+                    int courseId = ((Course)sectionTable.getValueAt(row, 1)).getId();
+                    int teacherId = ((Teacher)sectionTable.getValueAt(row, 2)).getId();
+                    System.out.println(courseId + "\t" + teacherId);
+                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s;", courseId, teacherId, sectionTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
-
-
+                constructJTables();
                 updateActiveTeachersAndCourses();
                 updateAvailableStudentsToAddToRoster();
             }catch (Exception e1){
@@ -392,8 +393,8 @@ public class SchoolManagerFrame extends JFrame{
                 return;
             try{
                 Statement s = connection.createStatement();
-                int teacherId = (Integer)teachersAvailable.getSelectedItem();
-                int courseId = (Integer)coursesAvailable.getSelectedItem();
+                int teacherId = ((Teacher)teachersAvailable.getSelectedItem()).getId();
+                int courseId = ((Course)coursesAvailable.getSelectedItem()).getId();
 
                 String sql = String.format("INSERT INTO section(course_id, teacher_id) VALUES (%d, %d)", courseId, teacherId);
                 s.executeUpdate(sql);
@@ -628,6 +629,7 @@ public class SchoolManagerFrame extends JFrame{
         coursesAvailable.addActionListener(e -> {
             if (sectionTable.getSelectedRow() == -1 || coursesAvailable.getSelectedItem() == null)
                 return;
+
             sectionTable.setValueAt(coursesAvailable.getSelectedItem(), sectionTable.getSelectedRow(), 1);
         });
         studentsAvailable = new ComboBox<>(700, 250, 150, 25, sectionPanel);
@@ -702,12 +704,13 @@ public class SchoolManagerFrame extends JFrame{
     }
     public void refreshInformation()
     {
-        updateActiveTeachersAndCourses();
-        updateAvailableStudentsToAddToRoster();
-        constructJTables();
         constructRosterTable(0);
         constructScheduleTable(0);
         constructSectionTaughtTable(0);
+
+        updateActiveTeachersAndCourses();
+        updateAvailableStudentsToAddToRoster();
+        constructJTables();
 
     }
     public void updateActiveTeachersAndCourses()
@@ -718,19 +721,21 @@ public class SchoolManagerFrame extends JFrame{
             ResultSet rs = s.executeQuery("SELECT * FROM teacher WHERE id >= 1");
             teachersAvailableArrayList.clear();
             coursesAvailableArrayList.clear();
-            ArrayList<String> teacherNames = new ArrayList<>();
-            ArrayList<String> courseNames = new ArrayList<>();
+            ArrayList<Object> teacherObjects = new ArrayList<>();
+            ArrayList<Object> courseObjects = new ArrayList<>();
+
+
             while (rs != null && rs.next()){
                 teachersAvailableArrayList.add(rs.getInt(1));
-                teacherNames.add(rs.getString("last_name") + ", " + rs.getString("first_name"));
+                teacherObjects.add(new Teacher(rs.getString("first_name"), rs.getString("last_name"), rs.getInt("id")));
             }
             rs = s.executeQuery("SELECT * FROM course WHERE id >= 1");
             while (rs != null && rs.next()){
                 coursesAvailableArrayList.add(rs.getInt(1));
-                courseNames.add(rs.getString("title"));
+                courseObjects.add(new Course(rs.getString("title"), rs.getInt("id"), rs.getInt("course_type")));
             }
-            coursesAvailable.setItems(courseNames);
-            teachersAvailable.setItems(teacherNames);
+            coursesAvailable.setItems(courseObjects);
+            teachersAvailable.setItems(teacherObjects);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -787,13 +792,15 @@ public class SchoolManagerFrame extends JFrame{
                 String sql = String.format("SELECT * FROM teacher WHERE id = %d", teacher_id);
                 ResultSet rs1 = statement.executeQuery(sql);
                 rs1.next();
-                String teacherName = rs1.getString("last_name") + ", " + rs1.getString("first_name");
-                row.set(2, teacherName);
+                Teacher teacherObject = new Teacher(rs1.getString("first_name"), rs1.getString("last_name"), teacher_id);
+
+                row.set(2, teacherObject);
 
                 sql = String.format("SELECT * FROM course WHERE id = %d", course_id);
                 rs1 = statement.executeQuery(sql);
                 rs1.next();
-                row.set(1, rs1.getString("title"));
+                Course courseObject = new Course(rs1.getString("title"), rs1.getInt("id"), rs1.getInt("course_type"));
+                row.set(1, courseObject);
             }
         }catch (Exception e) {
             e.printStackTrace();
@@ -896,7 +903,6 @@ public class SchoolManagerFrame extends JFrame{
 
             teacherTable.clearSelection();
             studentTable.clearSelection();
-            //sectionTable.clearSelection();
         });
     }
     public void enableView(JPanel panel)
@@ -1234,5 +1240,77 @@ class Student{
 
     public int getId() {
         return id;
+    }
+}
+class Teacher{
+    private String firstName;
+    private String lastName;
+    private int id;
+
+    public Teacher(String firstName, String lastName, int id) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.id = id;
+    }
+
+    @Override
+    public String toString() {
+        return lastName + ", " + firstName;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public int getId() {
+        return id;
+    }
+}
+class Course{
+    private String title;
+    private int id;
+    private int type;
+
+    public Course(String title, int id, int type) {
+        this.title = title;
+        this.type = type;
+        this.id = id;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public int getType() {
+        return type;
+    }
+
+    public void setType(int type) {
+        this.type = type;
+    }
+
+    @Override
+    public String toString() {
+        return title;
     }
 }
