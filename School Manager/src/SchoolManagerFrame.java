@@ -51,9 +51,9 @@ public class SchoolManagerFrame extends JFrame{
     private ArrayList<Integer> coursesAvailableArrayList;
     private ArrayList<Integer> studentsAvailableArrayList;
     private ArrayList<Integer> teachersAvailableArrayList;
-    private ComboBox<Integer> coursesAvailable;
-    private ComboBox<Integer> teachersAvailable;
-    private ComboBox<Integer> studentsAvailable;
+    private ComboBox<String> coursesAvailable;
+    private ComboBox<String> teachersAvailable;
+    private ComboBox<Object> studentsAvailable;
     private JScrollPane rosterScrollPane;
     private Table rosterTable;
 
@@ -142,9 +142,9 @@ public class SchoolManagerFrame extends JFrame{
                     while (rs != null && rs.next())
                     {
                         ArrayList<Object> a1 = new ArrayList<>();
-                        for (int f = 1; f <= rs.getMetaData().getColumnCount(); i++)
+                        for (int f = 1; f <= rs.getMetaData().getColumnCount(); f++)
                         {
-                            a1.add(rs.getObject(i));
+                            a1.add(rs.getObject(f));
                         }
                         teacherTableData.add(a1);
                     }
@@ -352,31 +352,34 @@ public class SchoolManagerFrame extends JFrame{
 
 
         studentSaveChanges = new Button("Save Alterations to Database", 625, 500, 300, 50, studentPanel);
-        addStudentButton = new Button("Add Student", 625, 300, 300, 50, studentPanel);
-        removeStudentButton = new Button("Remove Selected Student", 625, 400, 300, 50, studentPanel);
+        addStudentButton = new Button("Add Student (Auto Saves)", 625, 300, 300, 50, studentPanel);
+        removeStudentButton = new Button("Remove Selected Student (Auto Saves)", 625, 400, 300, 50, studentPanel);
 
         teacherSaveChanges = new Button("Save Alterations to Database", 625, 500, 300, 50, teacherPanel);
-        addTeacherButton = new Button("Add Teacher", 625, 300, 300, 50, teacherPanel);
-        removeTeacherButton = new Button("Remove Selected Teacher", 625, 400, 300, 50, teacherPanel);
+        addTeacherButton = new Button("Add Teacher (Auto Saves)", 625, 300, 300, 50, teacherPanel);
+        removeTeacherButton = new Button("Remove Selected Teacher (Auto Saves)", 625, 400, 300, 50, teacherPanel);
 
         saveCourseChangesButton = new Button("Save Course Alterations to Database", 625, 500, 300, 50, coursePanel);
-        addCourseButton = new Button("Add Course", 625, 300, 300, 50, coursePanel);
-        removeCourseButton = new Button("Remove Selected Course", 625, 400, 300, 50, coursePanel);
+        addCourseButton = new Button("Add Course (Auto Saves)", 625, 300, 300, 50, coursePanel);
+        removeCourseButton = new Button("Remove Selected Course (Auto Saves)", 625, 400, 300, 50, coursePanel);
 
-        Button addStudentToRosterButton = new Button("Add student to roster", 690, 300, 170, 25, sectionPanel);
-        Button removeStudentFromRosterButton = new Button("Remove selected student from roster", 640, 350, 270, 25, sectionPanel);//32
-        Button addNewSection = new Button("Add new section", 625, 400, 300, 50, sectionPanel);
-        Button removeSelectedSection = new Button("Remove selected section", 625, 475, 300, 50, sectionPanel);
+        Button addStudentToRosterButton = new Button("Add student to roster (Auto Saves)", 690, 300, 170, 25, sectionPanel);
+        Button removeStudentFromRosterButton = new Button("Remove selected student from roster (Auto Saves)", 640, 350, 270, 25, sectionPanel);//32
+        Button addNewSection = new Button("Add new section (Auto Saves)", 625, 400, 300, 50, sectionPanel);
+        Button removeSelectedSection = new Button("Remove selected section (Auto Saves)", 625, 475, 300, 50, sectionPanel);
         Button saveSectionChanges = new Button("Save section table changes", 625, 550, 300, 50, sectionPanel);
         saveSectionChanges.addActionListener(e -> {
             try{
+
+                //since table has string but section takes course_id and teacher_id it causes error
                 Statement s = connection.createStatement();
                 for (int row = 0; row < sectionTable.getRowCount(); row++)
                 {
-                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s",
+                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s;",
                             sectionTable.getValueAt(row, 1), sectionTable.getValueAt(row, 2), sectionTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
+
 
                 updateActiveTeachersAndCourses();
                 updateAvailableStudentsToAddToRoster();
@@ -435,7 +438,8 @@ public class SchoolManagerFrame extends JFrame{
                 if (studentsAvailable.getSelectedItem() == null || sectionTable.getRowCount() == 0 || sectionTable.getSelectedRow() == -1)
                     return;
                 Statement s = connection.createStatement();
-                Integer selectedId = (Integer)studentsAvailable.getSelectedItem();
+                Student selectedStudent = (Student)studentsAvailable.getSelectedItem();
+                Integer selectedId = selectedStudent.getId();
                 Integer selectedSectionId = (Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0);
                 String sql = String.format("INSERT INTO enrollment(section_id, student_id) VALUES (%d, %d);", selectedSectionId, selectedId);
                 s.executeUpdate(sql);
@@ -614,20 +618,21 @@ public class SchoolManagerFrame extends JFrame{
         versionNumber.setFont(new Font("Serif", Font.PLAIN, 30)); applicationCreators.setFont(new Font("Serif", Font.PLAIN, 30));
         helpPanel.add(versionNumber); helpPanel.add(applicationCreators);
 
-        teachersAvailable = new ComboBox<>(700, 150, 150, 25, sectionPanel, teachersAvailableArrayList);
+        teachersAvailable = new ComboBox<>(700, 150, 150, 25, sectionPanel);
         teachersAvailable.addActionListener(e -> {
             if (sectionTable.getSelectedRow() == -1 || teachersAvailable.getSelectedItem() == null)
                 return;
             sectionTable.setValueAt(teachersAvailable.getSelectedItem(), sectionTable.getSelectedRow(), 2);
         });
-        coursesAvailable = new ComboBox<>(700, 200, 150, 25, sectionPanel, coursesAvailableArrayList);
+        coursesAvailable = new ComboBox<>(700, 200, 150, 25, sectionPanel);
         coursesAvailable.addActionListener(e -> {
             if (sectionTable.getSelectedRow() == -1 || coursesAvailable.getSelectedItem() == null)
                 return;
             sectionTable.setValueAt(coursesAvailable.getSelectedItem(), sectionTable.getSelectedRow(), 1);
         });
-        studentsAvailable = new ComboBox<>(700, 250, 150, 25, sectionPanel, coursesAvailableArrayList);
-
+        studentsAvailable = new ComboBox<>(700, 250, 150, 25, sectionPanel);
+        updateActiveTeachersAndCourses();
+        updateAvailableStudentsToAddToRoster();
         courseACAbutton.addActionListener(e -> {
             if (courseTable.getSelectedRow() == -1)
                 return;
@@ -710,18 +715,22 @@ public class SchoolManagerFrame extends JFrame{
         try{
 
             Statement s = connection.createStatement();
-            ResultSet rs = s.executeQuery("SELECT id FROM teacher WHERE id >= 1");
+            ResultSet rs = s.executeQuery("SELECT * FROM teacher WHERE id >= 1");
             teachersAvailableArrayList.clear();
             coursesAvailableArrayList.clear();
+            ArrayList<String> teacherNames = new ArrayList<>();
+            ArrayList<String> courseNames = new ArrayList<>();
             while (rs != null && rs.next()){
                 teachersAvailableArrayList.add(rs.getInt(1));
+                teacherNames.add(rs.getString("last_name") + ", " + rs.getString("first_name"));
             }
-            rs = s.executeQuery("SELECT id FROM course WHERE id >= 1");
+            rs = s.executeQuery("SELECT * FROM course WHERE id >= 1");
             while (rs != null && rs.next()){
                 coursesAvailableArrayList.add(rs.getInt(1));
+                courseNames.add(rs.getString("title"));
             }
-            coursesAvailable.setItems(coursesAvailableArrayList);
-            teachersAvailable.setItems(teachersAvailableArrayList);
+            coursesAvailable.setItems(courseNames);
+            teachersAvailable.setItems(teacherNames);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -742,18 +751,67 @@ public class SchoolManagerFrame extends JFrame{
                 notIds += rosterTable.getValueAt(row, 2) + ",";
             }
             notIds = notIds.substring(0, notIds.length()-1) + ")";
-            String sql = String.format("SELECT id FROM student WHERE id NOT IN %s;", notIds);
+            String sql = String.format("SELECT * FROM student WHERE id NOT IN %s;", notIds);
             if (rosterTable.getRowCount() == 0){
-                sql = "SELECT id FROM student WHERE id >= 1;";
+                sql = "SELECT * FROM student WHERE id >= 1;";
             }
             ResultSet rs = s.executeQuery(sql);
+            ArrayList<String> studentsNamesAvailableArrayList = new ArrayList<>();
+            ArrayList<Object> studentsArrayList = new ArrayList<>();
             while (rs != null && rs.next()){
+                studentsArrayList.add(new Student(rs.getString("first_name"),rs.getString("last_name"), rs.getInt("id") ));
                 studentsAvailableArrayList.add(rs.getInt("id"));
+                studentsNamesAvailableArrayList.add(rs.getString("last_name") + ", " + rs.getString("first_name"));
             }
-            studentsAvailable.setItems(studentsAvailableArrayList);
+            studentsAvailable.setItems(studentsArrayList);
         }catch (Exception e){
             e.printStackTrace();
         }
+    }
+    public void constructSectionTable(){
+        ArrayList<ArrayList<Object>> data = new ArrayList<>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet rs = statement.executeQuery("SELECT * FROM section WHERE id >= 1;");
+            while (rs != null && rs.next()){
+                ArrayList<Object> a1 = new ArrayList<>();
+                a1.add(rs.getObject(1));
+                a1.add(rs.getObject(2));
+                a1.add(rs.getObject(3));
+                data.add(a1);
+            }
+            for (ArrayList<Object> row : data){
+                int course_id = (Integer)row.get(1);
+                int teacher_id = (Integer)row.get(2);
+
+                String sql = String.format("SELECT * FROM teacher WHERE id = %d", teacher_id);
+                ResultSet rs1 = statement.executeQuery(sql);
+                rs1.next();
+                String teacherName = rs1.getString("last_name") + ", " + rs1.getString("first_name");
+                row.set(2, teacherName);
+
+                sql = String.format("SELECT * FROM course WHERE id = %d", course_id);
+                rs1 = statement.executeQuery(sql);
+                rs1.next();
+                row.set(1, rs1.getString("title"));
+            }
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+        Object[][] tableData = new Object[0][0];
+        if (data.size()!= 0)
+            tableData = new Object[data.size()][data.get(0).size()];
+        for (int i = 0; i < data.size(); i++)
+        {
+            tableData[i] = data.get(i).toArray();
+        }
+        ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1); nonEditableColumns.add(2);
+        Table t = new Table(new String[]{"section_id", "course_name", "teacher_name"}, tableData, nonEditableColumns);
+        t.setVisible(true);
+        t.getTableHeader().setReorderingAllowed(false);
+        t.getTableHeader().setResizingAllowed(false);
+        sectionTable = t;
+        sectionScrollPane.setViewportView(sectionTable);
     }
     public void constructJTables()
     {
@@ -762,10 +820,7 @@ public class SchoolManagerFrame extends JFrame{
         studentTable = constructTable("SELECT * FROM student WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
         nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(2);
         courseTable = constructTable("SELECT * FROM course WHERE id >= 1;", new String[]{"id", "title", "type"}, nonEditableColumns);
-        nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1); nonEditableColumns.add(2);
-        sectionTable = constructTable("SELECT * FROM section WHERE id >= 1;", new String[]{"id", "course_id", "teacher_id"}, nonEditableColumns);
-
-
+        constructSectionTable();
 
         teacherScrollPane.setViewportView(teacherTable);
         studentScrollPane.setViewportView(studentTable);
@@ -1117,6 +1172,7 @@ class RadioButton extends JRadioButton{
     }
 }
 class ComboBox<E> extends JComboBox<E>{
+    private ArrayList<Integer> actualIds;
     public ComboBox(int x, int y, int width, int height, JPanel panel, ArrayList<E> items){
         super();
         setBounds(x, y, width, height);
@@ -1125,9 +1181,58 @@ class ComboBox<E> extends JComboBox<E>{
         panel.add(this);
 
     }
+    public ComboBox(int x, int y, int width, int height, JPanel panel){
+        super();
+        setBounds(x, y, width, height);
+        panel.add(this);
+    }
     public void setItems(ArrayList<E> items){
         removeAllItems();
         for (E item : items)
             addItem(item);
+    }
+
+    public ArrayList<Integer> getActualIds() {
+        return actualIds;
+    }
+
+    public void setActualIds(ArrayList<Integer> actualIds) {
+        this.actualIds = actualIds;
+    }
+}
+class Student{
+    private String firstName;
+    private String lastName;
+    private int id;
+
+    public Student(String firstName, String lastName, int id) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.id = id;
+    }
+
+    @Override
+    public String toString() {
+        return lastName + ", " + firstName;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public int getId() {
+        return id;
     }
 }
