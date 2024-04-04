@@ -367,27 +367,7 @@ public class SchoolManagerFrame extends JFrame{
         Button removeStudentFromRosterButton = new Button("Remove selected student from roster (Auto Saves)", 640, 350, 270, 25, sectionPanel);//32
         Button addNewSection = new Button("Add new section (Auto Saves)", 625, 400, 300, 50, sectionPanel);
         Button removeSelectedSection = new Button("Remove selected section (Auto Saves)", 625, 475, 300, 50, sectionPanel);
-        Button saveSectionChanges = new Button("Save section table changes", 625, 550, 300, 50, sectionPanel);
-        saveSectionChanges.addActionListener(e -> {
-            try{
-
-                //since table has string but section takes course_id and teacher_id it causes error
-                Statement s = connection.createStatement();
-                for (int row = 0; row < sectionTable.getRowCount(); row++)
-                {
-                    int courseId = ((Course)sectionTable.getValueAt(row, 1)).getId();
-                    int teacherId = ((Teacher)sectionTable.getValueAt(row, 2)).getId();
-                    System.out.println(courseId + "\t" + teacherId);
-                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s;", courseId, teacherId, sectionTable.getValueAt(row, 0));
-                    s.executeUpdate(sqlCommand);
-                }
-                constructJTables();
-                updateActiveTeachersAndCourses();
-                updateAvailableStudentsToAddToRoster();
-            }catch (Exception e1){
-                e1.printStackTrace();
-            }
-        });
+        //Button saveSectionChanges = new Button("Save section table changes", 625, 550, 300, 50, sectionPanel);
         addNewSection.addActionListener(e -> {
             if (teachersAvailable.getItemCount() == 0 || coursesAvailable.getItemCount() == 0 || teachersAvailable.getSelectedItem() == null || coursesAvailable.getSelectedItem() == null)
                 return;
@@ -428,7 +408,6 @@ public class SchoolManagerFrame extends JFrame{
                 s.executeUpdate(sql);
                 constructRosterTable(selectedSectionId);
                 updateAvailableStudentsToAddToRoster();
-                updateActiveTeachersAndCourses();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -446,7 +425,6 @@ public class SchoolManagerFrame extends JFrame{
                 s.executeUpdate(sql);
                 constructRosterTable(selectedSectionId);
                 updateAvailableStudentsToAddToRoster();
-                updateActiveTeachersAndCourses();
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -624,6 +602,24 @@ public class SchoolManagerFrame extends JFrame{
             if (sectionTable.getSelectedRow() == -1 || teachersAvailable.getSelectedItem() == null)
                 return;
             sectionTable.setValueAt(teachersAvailable.getSelectedItem(), sectionTable.getSelectedRow(), 2);
+            try{
+
+                //since table has string but section takes course_id and teacher_id it causes error
+                Statement s = connection.createStatement();
+                for (int row = 0; row < sectionTable.getRowCount(); row++)
+                {
+                    int courseId = ((Course)sectionTable.getValueAt(row, 1)).getId();
+                    int teacherId = ((Teacher)sectionTable.getValueAt(row, 2)).getId();
+                    System.out.println(courseId + "\t" + teacherId);
+                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s;", courseId, teacherId, sectionTable.getValueAt(row, 0));
+                    s.executeUpdate(sqlCommand);
+                }
+
+                updateAvailableStudentsToAddToRoster();
+                constructSectionTable();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
         });
         coursesAvailable = new ComboBox<>(700, 200, 150, 25, sectionPanel);
         coursesAvailable.addActionListener(e -> {
@@ -631,6 +627,23 @@ public class SchoolManagerFrame extends JFrame{
                 return;
 
             sectionTable.setValueAt(coursesAvailable.getSelectedItem(), sectionTable.getSelectedRow(), 1);
+            try{
+
+                //since table has string but section takes course_id and teacher_id it causes error
+                Statement s = connection.createStatement();
+                for (int row = 0; row < sectionTable.getRowCount(); row++)
+                {
+                    int courseId = ((Course)sectionTable.getValueAt(row, 1)).getId();
+                    int teacherId = ((Teacher)sectionTable.getValueAt(row, 2)).getId();
+                    System.out.println(courseId + "\t" + teacherId);
+                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s;", courseId, teacherId, sectionTable.getValueAt(row, 0));
+                    s.executeUpdate(sqlCommand);
+                }
+                updateAvailableStudentsToAddToRoster();
+                constructSectionTable();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
         });
         studentsAvailable = new ComboBox<>(700, 250, 150, 25, sectionPanel);
         updateActiveTeachersAndCourses();
