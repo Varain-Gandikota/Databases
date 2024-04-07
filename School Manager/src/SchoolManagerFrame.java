@@ -351,20 +351,20 @@ public class SchoolManagerFrame extends JFrame{
         helpPanel.setSize(getWidth(), getHeight());
 
 
-        studentSaveChanges = new Button("Save Alterations to Database", 625, 500, 300, 50, studentPanel);
+        //studentSaveChanges = new Button("Save Alterations to Database", 625, 500, 300, 50, studentPanel);
         addStudentButton = new Button("Add Student (Auto Saves)", 625, 300, 300, 50, studentPanel);
         removeStudentButton = new Button("Remove Selected Student (Auto Saves)", 625, 400, 300, 50, studentPanel);
 
-        teacherSaveChanges = new Button("Save Alterations to Database", 625, 500, 300, 50, teacherPanel);
+        //teacherSaveChanges = new Button("Save Alterations to Database", 625, 500, 300, 50, teacherPanel);
         addTeacherButton = new Button("Add Teacher (Auto Saves)", 625, 300, 300, 50, teacherPanel);
         removeTeacherButton = new Button("Remove Selected Teacher (Auto Saves)", 625, 400, 300, 50, teacherPanel);
 
-        saveCourseChangesButton = new Button("Save Course Alterations to Database", 625, 500, 300, 50, coursePanel);
+        //saveCourseChangesButton = new Button("Save Course Alterations to Database", 625, 500, 300, 50, coursePanel);
         addCourseButton = new Button("Add Course (Auto Saves)", 625, 300, 300, 50, coursePanel);
         removeCourseButton = new Button("Remove Selected Course (Auto Saves)", 625, 400, 300, 50, coursePanel);
 
-        Button addStudentToRosterButton = new Button("Add student to roster (Auto Saves)", 690, 300, 170, 25, sectionPanel);
-        Button removeStudentFromRosterButton = new Button("Remove selected student from roster (Auto Saves)", 640, 350, 270, 25, sectionPanel);//32
+        Button addStudentToRosterButton = new Button("Add student to roster (Auto Saves)", 625, 300, 300, 25, sectionPanel);
+        Button removeStudentFromRosterButton = new Button("Remove selected student from roster (Auto Saves)", 600, 350, 350, 25, sectionPanel);//32
         Button addNewSection = new Button("Add new section (Auto Saves)", 625, 400, 300, 50, sectionPanel);
         Button removeSelectedSection = new Button("Remove selected section (Auto Saves)", 625, 475, 300, 50, sectionPanel);
         //Button saveSectionChanges = new Button("Save section table changes", 625, 550, 300, 50, sectionPanel);
@@ -430,7 +430,7 @@ public class SchoolManagerFrame extends JFrame{
             }
         });
 
-        saveCourseChangesButton.addActionListener(e -> {
+        /*saveCourseChangesButton.addActionListener(e -> {
             try{
                 Statement s = connection.createStatement();
                 for (int row = 0; row < courseTable.getRowCount(); row++)
@@ -443,7 +443,7 @@ public class SchoolManagerFrame extends JFrame{
             }catch (Exception e1){
                 e1.printStackTrace();
             }
-        });
+        });*/
         addCourseButton.addActionListener(e -> {
             if (courseName.getText().isEmpty())
                 return;
@@ -479,7 +479,7 @@ public class SchoolManagerFrame extends JFrame{
                 e1.printStackTrace();
             }
         });
-        teacherSaveChanges.addActionListener(e -> {
+        /*teacherSaveChanges.addActionListener(e -> {
             try{
                 Statement s = connection.createStatement();
                 for (int row = 0; row < teacherTable.getRowCount(); row++)
@@ -493,7 +493,7 @@ public class SchoolManagerFrame extends JFrame{
             }catch (Exception e1){
                 e1.printStackTrace();
             }
-        });
+        });*/
         addTeacherButton.addActionListener(e -> {
             if (teacherFirstName.getText().isEmpty() || teacherLastName.getText().isEmpty())
                 return;
@@ -525,7 +525,7 @@ public class SchoolManagerFrame extends JFrame{
                 e1.printStackTrace();
             }
         });
-        studentSaveChanges.addActionListener(e -> {
+        /*studentSaveChanges.addActionListener(e -> {
             try{
                 Statement s = connection.createStatement();
                 for (int row = 0; row < studentTable.getRowCount(); row++)
@@ -540,7 +540,7 @@ public class SchoolManagerFrame extends JFrame{
             }catch (Exception e1){
                 e1.printStackTrace();
             }
-        });
+        });*/
         addStudentButton.addActionListener(e -> {
             if (studentFirstName.getText().isEmpty() || studentLastName.getText().isEmpty())
                 return;
@@ -853,8 +853,34 @@ public class SchoolManagerFrame extends JFrame{
         studentScheduleTable = null;
         sectionsTaughtTable = null;
         rosterTable = null;
+        courseTable.getModel().addTableModelListener(e -> {
+            try{
+                Statement s = connection.createStatement();
+                for (int row = 0; row < courseTable.getRowCount(); row++)
+                {
+                    String sqlCommand = String.format("UPDATE course SET title= '%s', course_type= %s WHERE id = %s",
+                            courseTable.getValueAt(row, 1), courseTable.getValueAt(row, 2), courseTable.getValueAt(row, 0));
+                    s.executeUpdate(sqlCommand);
+                }
+                updateActiveTeachersAndCourses();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
+        });
         teacherTable.getModel().addTableModelListener(e -> {
-            System.out.println("Something");
+            try{
+                Statement s = connection.createStatement();
+                for (int row = 0; row < teacherTable.getRowCount(); row++)
+                {
+                    String sqlCommand = String.format("UPDATE teacher SET first_name= '%s', last_name = '%s' WHERE id = %s",
+                            teacherTable.getValueAt(row, 1), teacherTable.getValueAt(row, 2), teacherTable.getValueAt(row, 0));
+                    s.executeUpdate(sqlCommand);
+                }
+                updateActiveTeachersAndCourses();
+                updateAvailableStudentsToAddToRoster();
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
         });
         sectionTable.getSelectionModel().addListSelectionListener(e -> {
             if (sectionTable.getSelectedRow() == -1)
@@ -880,6 +906,22 @@ public class SchoolManagerFrame extends JFrame{
             courseTable.clearSelection();
             sectionTable.clearSelection();
 
+        });
+        studentTable.getModel().addTableModelListener(e -> {
+            try{
+                Statement s = connection.createStatement();
+                for (int row = 0; row < studentTable.getRowCount(); row++)
+                {
+                    String sqlCommand = String.format("UPDATE student SET first_name= '%s', last_name = '%s' WHERE id = %s",
+                            studentTable.getValueAt(row, 1), studentTable.getValueAt(row, 2), studentTable.getValueAt(row, 0));
+                    s.executeUpdate(sqlCommand);
+                }
+                rosterTable = constructRosterTable(0);
+                updateAvailableStudentsToAddToRoster();
+                rosterScrollPane.setViewportView(rosterTable);
+            }catch (Exception e1){
+                e1.printStackTrace();
+            }
         });
         teacherTable.getSelectionModel().addListSelectionListener(e -> {
             if (teacherTable.getSelectedRow() == -1)
