@@ -1,3 +1,5 @@
+import com.mysql.cj.CoreSession;
+
 import javax.management.ObjectName;
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
@@ -56,6 +58,9 @@ public class SchoolManagerFrame extends JFrame{
     private ComboBox<Object> studentsAvailable;
     private JScrollPane rosterScrollPane;
     private Table rosterTable;
+    private Button addStudentToRosterButton;
+    private Button removeStudentFromRosterButton;
+    private Button removeSelectedSection;
 
     public SchoolManagerFrame(Connection connection)
     {
@@ -170,6 +175,13 @@ public class SchoolManagerFrame extends JFrame{
         importDataItem.addActionListener(e -> {
             try {
                 Statement statement = connection.createStatement();
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+                int result = fileChooser.showOpenDialog(null);
+                if (result != JFileChooser.APPROVE_OPTION)
+                    return;
+
+                File chosenFile = fileChooser.getSelectedFile();
                 statement.execute("DROP TABLE IF EXISTS enrollment;");
                 statement.execute("DROP TABLE IF EXISTS section;");
                 statement.execute("DROP TABLE IF EXISTS teacher;");
@@ -187,16 +199,8 @@ public class SchoolManagerFrame extends JFrame{
                         "FOREIGN KEY(section_id) REFERENCES section(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
                         "FOREIGN KEY(student_id) REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE);");
 
-                statement.executeUpdate("INSERT INTO teacher(id, first_name, last_name) VALUES (-1, 'No Teacher Assigned', 'No Teacher Assigned');");
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
-                int result = fileChooser.showOpenDialog(null);
-                if (result != JFileChooser.APPROVE_OPTION)
-                    return;
-
-                File chosenFile = fileChooser.getSelectedFile();
+                statement.executeUpdate("INSERT INTO teacher(id, first_name, last_name) VALUES (-1, 'Assigned', 'No Teacher');");
                 if (chosenFile.exists()){
-
                     Scanner s = new Scanner(chosenFile);
                     for (int i = 0; i < 5; i++){
                         ArrayList<String[]> tableData = new ArrayList<>();
@@ -320,12 +324,12 @@ public class SchoolManagerFrame extends JFrame{
 
 
 
-        constructJTables();
+
         teacherScrollPane.setBounds(10, 10, 500, 550);
         studentScrollPane.setBounds(10, 10, 500, 550);
         courseScrollPane.setBounds(10, 10, 500, 550);
         sectionScrollPane.setBounds(10, 10, 500, 550);
-        scheduleScrollPane.setBounds(520, 10, 350, 100);
+        scheduleScrollPane.setBounds(520, 10, 425, 100);
         sectionsTaughtScrollPane.setBounds(520, 10, 350, 100);
         rosterScrollPane.setBounds(520, 10, 350, 100);
 
@@ -363,10 +367,11 @@ public class SchoolManagerFrame extends JFrame{
         addCourseButton = new Button("Add Course (Auto Saves)", 625, 300, 300, 50, coursePanel);
         removeCourseButton = new Button("Remove Selected Course (Auto Saves)", 625, 400, 300, 50, coursePanel);
 
-        Button addStudentToRosterButton = new Button("Add student to roster (Auto Saves)", 625, 300, 300, 25, sectionPanel);
-        Button removeStudentFromRosterButton = new Button("Remove selected student from roster (Auto Saves)", 600, 350, 350, 25, sectionPanel);//32
+        addStudentToRosterButton = new Button("Add student to roster (Auto Saves)", 625, 300, 300, 25, sectionPanel);
+        removeStudentFromRosterButton = new Button("Remove selected student from roster (Auto Saves)", 600, 350, 350, 25, sectionPanel);//32
         Button addNewSection = new Button("Add new section (Auto Saves)", 625, 400, 300, 50, sectionPanel);
-        Button removeSelectedSection = new Button("Remove selected section (Auto Saves)", 625, 475, 300, 50, sectionPanel);
+        removeSelectedSection = new Button("Remove selected section (Auto Saves)", 625, 475, 300, 50, sectionPanel);
+        constructJTables();
         //Button saveSectionChanges = new Button("Save section table changes", 625, 550, 300, 50, sectionPanel);
         addNewSection.addActionListener(e -> {
             if (teachersAvailable.getItemCount() == 0 || coursesAvailable.getItemCount() == 0 || teachersAvailable.getSelectedItem() == null || coursesAvailable.getSelectedItem() == null)
@@ -429,21 +434,6 @@ public class SchoolManagerFrame extends JFrame{
                 e1.printStackTrace();
             }
         });
-
-        /*saveCourseChangesButton.addActionListener(e -> {
-            try{
-                Statement s = connection.createStatement();
-                for (int row = 0; row < courseTable.getRowCount(); row++)
-                {
-                    String sqlCommand = String.format("UPDATE course SET title= '%s', course_type= %s WHERE id = %s",
-                            courseTable.getValueAt(row, 1), courseTable.getValueAt(row, 2), courseTable.getValueAt(row, 0));
-                    s.executeUpdate(sqlCommand);
-                }
-                updateActiveTeachersAndCourses();
-            }catch (Exception e1){
-                e1.printStackTrace();
-            }
-        });*/
         addCourseButton.addActionListener(e -> {
             if (courseName.getText().isEmpty())
                 return;
@@ -599,9 +589,15 @@ public class SchoolManagerFrame extends JFrame{
 
         teachersAvailable = new ComboBox<>(700, 150, 150, 25, sectionPanel);
         teachersAvailable.addActionListener(e -> {
+
             if (sectionTable.getSelectedRow() == -1 || teachersAvailable.getSelectedItem() == null)
                 return;
+            Teacher t = (Teacher)teachersAvailable.getSelectedItem();
+            Teacher ogSelectedTeacher = (Teacher)sectionTable.getValueAt(sectionTable.getSelectedRow(), 2);
+            if (t.getId() == ogSelectedTeacher.getId())
+                return;
             sectionTable.setValueAt(teachersAvailable.getSelectedItem(), sectionTable.getSelectedRow(), 2);
+
             try{
 
                 //since table has string but section takes course_id and teacher_id it causes error
@@ -625,7 +621,10 @@ public class SchoolManagerFrame extends JFrame{
         coursesAvailable.addActionListener(e -> {
             if (sectionTable.getSelectedRow() == -1 || coursesAvailable.getSelectedItem() == null)
                 return;
-
+            Course c = (Course)coursesAvailable.getSelectedItem();
+            Course ogSelectedCourse = (Course)sectionTable.getValueAt(sectionTable.getSelectedRow(), 1);
+            if (c.getId() == ogSelectedCourse.getId())
+                return;
             sectionTable.setValueAt(coursesAvailable.getSelectedItem(), sectionTable.getSelectedRow(), 1);
             try{
 
@@ -731,7 +730,7 @@ public class SchoolManagerFrame extends JFrame{
         try{
 
             Statement s = connection.createStatement();
-            ResultSet rs = s.executeQuery("SELECT * FROM teacher WHERE id >= 1");
+            ResultSet rs = s.executeQuery("SELECT * FROM teacher");
             teachersAvailableArrayList.clear();
             coursesAvailableArrayList.clear();
             ArrayList<Object> teacherObjects = new ArrayList<>();
@@ -749,6 +748,7 @@ public class SchoolManagerFrame extends JFrame{
             }
             coursesAvailable.setItems(courseObjects);
             teachersAvailable.setItems(teacherObjects);
+
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -815,6 +815,7 @@ public class SchoolManagerFrame extends JFrame{
                 Course courseObject = new Course(rs1.getString("title"), rs1.getInt("id"), rs1.getInt("course_type"));
                 row.set(1, courseObject);
             }
+
         }catch (Exception e) {
             e.printStackTrace();
         }
@@ -832,6 +833,43 @@ public class SchoolManagerFrame extends JFrame{
         t.getTableHeader().setResizingAllowed(false);
         sectionTable = t;
         sectionScrollPane.setViewportView(sectionTable);
+        sectionTable.getSelectionModel().addListSelectionListener(e -> {
+            if (sectionTable.getSelectedRow() == -1)
+                return;
+            rosterTable = constructRosterTable((Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0));
+            rosterScrollPane.setViewportView(rosterTable);
+            updateAvailableStudentsToAddToRoster();
+
+            Course selectedCourseObject = (Course)sectionTable.getValueAt(sectionTable.getSelectedRow(), 1);
+            Teacher selectedTeacherObject = (Teacher)sectionTable.getValueAt(sectionTable.getSelectedRow(), 2);
+
+            for (int cv = 0; cv < teachersAvailable.getItemCount(); cv++){
+                Object item = teachersAvailable.getItemAt(cv);
+                System.out.println( "Teacher Id: " + ((Teacher)item).getId());
+                if ( ((Teacher)item).getId() == selectedTeacherObject.getId()) {
+                    teachersAvailable.setSelectedIndex(cv);
+                }
+            }
+            for (int i = 0; i < coursesAvailable.getItemCount(); i++){
+                Object item = coursesAvailable.getItemAt(i);
+                System.out.println( "Course Id: " + ((Course)item).getId());
+                if (((Course)item).getId() == selectedCourseObject.getId()) {
+                    coursesAvailable.setSelectedIndex(i);
+                }
+            }
+            addStudentToRosterButton.setEnabled(true);
+            addStudentToRosterButton.setVisible(true);
+
+            removeSelectedSection.setVisible(true);
+            removeSelectedSection.setEnabled(true);
+            System.out.println("section selected row: "+ sectionTable.getSelectedRow());
+        });
+        addStudentToRosterButton.setEnabled(false);
+        addStudentToRosterButton.setVisible(false);
+
+        removeSelectedSection.setVisible(false);
+        removeSelectedSection.setEnabled(false);
+
     }
     public void constructJTables()
     {
@@ -845,14 +883,13 @@ public class SchoolManagerFrame extends JFrame{
         teacherScrollPane.setViewportView(teacherTable);
         studentScrollPane.setViewportView(studentTable);
         courseScrollPane.setViewportView(courseTable);
-        sectionScrollPane.setViewportView(sectionTable);
-
 
         nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1);
 
         studentScheduleTable = null;
         sectionsTaughtTable = null;
         rosterTable = null;
+
         courseTable.getModel().addTableModelListener(e -> {
             try{
                 Statement s = connection.createStatement();
@@ -882,29 +919,16 @@ public class SchoolManagerFrame extends JFrame{
                 e1.printStackTrace();
             }
         });
-        sectionTable.getSelectionModel().addListSelectionListener(e -> {
-            if (sectionTable.getSelectedRow() == -1)
-                return;
-            rosterTable = constructRosterTable((Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0));
-            rosterScrollPane.setViewportView(rosterTable);
-            updateAvailableStudentsToAddToRoster();
 
-            Object selectedTeacherId = sectionTable.getValueAt(sectionTable.getSelectedRow(), 2);
-            teachersAvailable.setSelectedItem(selectedTeacherId);
-            teacherTable.clearSelection();
-            courseTable.clearSelection();
-            studentTable.clearSelection();
-
-        });
         studentTable.getSelectionModel().addListSelectionListener(e -> {
             if (studentTable.getSelectedRow() == -1)
                 return;
             studentScheduleTable = constructScheduleTable((Integer)studentTable.getValueAt(studentTable.getSelectedRow(), 0));
             scheduleScrollPane.setViewportView(studentScheduleTable);
 
-            teacherTable.clearSelection();
-            courseTable.clearSelection();
-            sectionTable.clearSelection();
+            removeStudentButton.setEnabled(true);
+            removeStudentButton.setVisible(true);
+
 
         });
         studentTable.getModel().addTableModelListener(e -> {
@@ -935,6 +959,9 @@ public class SchoolManagerFrame extends JFrame{
             studentTable.clearSelection();
             courseTable.clearSelection();
             sectionTable.clearSelection();
+
+            removeTeacherButton.setVisible(true);
+            removeTeacherButton.setEnabled(true);
         });
         courseTable.getSelectionModel().addListSelectionListener(e -> {
             if (courseTable.getSelectedRow() == -1)
@@ -958,7 +985,18 @@ public class SchoolManagerFrame extends JFrame{
 
             teacherTable.clearSelection();
             studentTable.clearSelection();
+
+            removeCourseButton.setEnabled(true);
+            removeCourseButton.setVisible(true);
         });
+        removeCourseButton.setEnabled(false);
+        removeCourseButton.setVisible(false);
+
+        removeTeacherButton.setVisible(false);
+        removeTeacherButton.setEnabled(false);
+
+        removeStudentButton.setEnabled(false);
+        removeStudentButton.setVisible(false);
     }
     public void enableView(JPanel panel)
     {
@@ -1020,6 +1058,12 @@ public class SchoolManagerFrame extends JFrame{
         t.getTableHeader().setReorderingAllowed(false);
         t.getTableHeader().setResizingAllowed(false);
         rosterTable = t;
+        t.getSelectionModel().addListSelectionListener(e -> {
+            removeStudentFromRosterButton.setEnabled(true);
+            removeStudentFromRosterButton.setVisible(true);
+        });
+        removeStudentFromRosterButton.setEnabled(false);
+        removeStudentFromRosterButton.setVisible(false);
         rosterScrollPane.setViewportView(rosterTable);
         return t;
     }
@@ -1109,6 +1153,7 @@ public class SchoolManagerFrame extends JFrame{
         ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0);nonEditableColumns.add(1);
         ArrayList<Object> courseNames = new ArrayList<>();
         ArrayList<Object> sections = new ArrayList<>();
+        ArrayList<Object> teachers = new ArrayList<>();
         try {
             Statement statement = connection.createStatement();
 
@@ -1119,6 +1164,16 @@ public class SchoolManagerFrame extends JFrame{
             while (rs != null && rs.next()){
                 sections.add(rs.getObject(1));
             }
+
+            for (Object sectionId : sections){
+                String sql = String.format("SELECT teacher_id FROM section WHERE id = %d", (Integer)sectionId);
+                ResultSet rs1 = statement.executeQuery(sql); rs1.next();
+                int teacherId = rs1.getInt("teacher_id");
+                sql = String.format("SELECT * FROM teacher WHERE id = %d", teacherId);
+                rs1 = statement.executeQuery(sql);rs1.next();
+                teachers.add(new Teacher(rs1.getString("first_name"), rs1.getString("last_name"), rs1.getInt("id")));
+            }
+
             //gets the courses of the sections
             System.out.println(sections);
             for (Object i : sections)
@@ -1145,9 +1200,9 @@ public class SchoolManagerFrame extends JFrame{
             tableData = new Object[sections.size()][courseNames.size()];
         for (int i = 0; i < sections.size(); i++)
         {
-            tableData[i] = new Object[]{sections.get(i), courseNames.get(i)};
+            tableData[i] = new Object[]{sections.get(i), courseNames.get(i), teachers.get(i)};
         }
-        Table t = new Table(new String[]{"section_id", "course_name"}, tableData, nonEditableColumns);
+        Table t = new Table(new String[]{"section_id", "course_name", "teacher"}, tableData, nonEditableColumns);
         studentScheduleTable = t;
         scheduleScrollPane.setViewportView(studentScheduleTable);
         t.setVisible(true);
@@ -1274,7 +1329,7 @@ class Student{
 
     @Override
     public String toString() {
-        return lastName + ", " + firstName;
+        return lastName + ", " + firstName+ " (" + id + ")";
     }
 
     public String getFirstName() {
@@ -1310,7 +1365,7 @@ class Teacher{
 
     @Override
     public String toString() {
-        return lastName + ", " + firstName;
+        return lastName + ", " + firstName + " (" + id + ")";
     }
 
     public String getFirstName() {
@@ -1366,6 +1421,6 @@ class Course{
 
     @Override
     public String toString() {
-        return title;
+        return title+ " (" + id + ")";
     }
 }
