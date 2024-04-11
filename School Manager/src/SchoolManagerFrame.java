@@ -394,7 +394,7 @@ public class SchoolManagerFrame extends JFrame{
                 return;
             try {
                 Statement s = connection.createStatement();
-                s.executeUpdate("DELETE FROM section WHERE id = " + (Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0) + ";");
+                s.executeUpdate("DELETE FROM section WHERE section_id = " + (Integer)sectionTable.getValueAt(sectionTable.getSelectedRow(), 0) + ";");
                 constructJTables();
                 sectionTable.clearSelection();
                 constructRosterTable(0);
@@ -461,7 +461,7 @@ public class SchoolManagerFrame extends JFrame{
                 return;
             try {
                 Statement s = connection.createStatement();
-                s.executeUpdate("DELETE FROM course WHERE id = " + (Integer)courseTable.getValueAt(courseTable.getSelectedRow(), 0) + ";");
+                s.executeUpdate("DELETE FROM course WHERE course_id = " + (Integer)courseTable.getValueAt(courseTable.getSelectedRow(), 0) + ";");
                 constructJTables();
                 courseTable.clearSelection();
                 courseName.setText("");
@@ -506,7 +506,7 @@ public class SchoolManagerFrame extends JFrame{
                 Statement s = connection.createStatement();
                 int selectedId = (Integer)teacherTable.getValueAt(teacherTable.getSelectedRow(), 0);
                 s.executeUpdate(String.format("UPDATE section SET teacher_id = -1 WHERE teacher_id = %d", selectedId));
-                s.executeUpdate("DELETE FROM teacher WHERE id = " + selectedId + ";");
+                s.executeUpdate("DELETE FROM teacher WHERE teacher_id = " + selectedId + ";");
                 constructJTables();
                 teacherTable.clearSelection();
                 sectionsTaughtScrollPane.setViewportView(null);
@@ -551,7 +551,7 @@ public class SchoolManagerFrame extends JFrame{
                 return;
             try {
                 Statement s = connection.createStatement();
-                s.executeUpdate("DELETE FROM student WHERE id = " + (Integer)studentTable.getValueAt(studentTable.getSelectedRow(), 0) + ";");
+                s.executeUpdate("DELETE FROM student WHERE student_id = " + (Integer)studentTable.getValueAt(studentTable.getSelectedRow(), 0) + ";");
                 constructJTables();
                 studentTable.clearSelection();
                 scheduleScrollPane.setViewportView(null);
