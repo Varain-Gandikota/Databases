@@ -274,18 +274,19 @@ public class SchoolManagerFrame extends JFrame{
                 statement.execute("DROP TABLE IF EXISTS student;");
                 statement.execute("DROP TABLE IF EXISTS course;");
 
-                statement.execute("CREATE TABLE IF NOT EXISTS teacher(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
-                statement.execute("CREATE TABLE IF NOT EXISTS course(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, title TEXT NOT NULL, course_type INTEGER NOT NULL);");
-                statement.execute("CREATE TABLE IF NOT EXISTS section(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, " +
+                statement.execute("CREATE TABLE IF NOT EXISTS teacher(teacher_id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
+                statement.execute("CREATE TABLE IF NOT EXISTS course(course_id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, title TEXT NOT NULL, course_type INTEGER NOT NULL);");
+                statement.execute("CREATE TABLE IF NOT EXISTS section(section_id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, " +
                         "course_id INTEGER NOT NULL, teacher_id INTEGER NOT NULL, " +
-                        "FOREIGN KEY (course_id) REFERENCES course(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
-                        "FOREIGN KEY (teacher_id) REFERENCES teacher(id) ON DELETE CASCADE ON UPDATE CASCADE);");
-                statement.execute("CREATE TABLE IF NOT EXISTS student(id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
-                statement.execute("CREATE TABLE IF NOT EXISTS enrollment(section_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY(section_id, student_id), " +
-                        "FOREIGN KEY(section_id) REFERENCES section(id) ON DELETE CASCADE ON UPDATE CASCADE, " +
-                        "FOREIGN KEY(student_id) REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE);");
+                        "FOREIGN KEY (course_id) REFERENCES course(course_id) ON DELETE CASCADE ON UPDATE CASCADE, " +
+                        "FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE ON UPDATE CASCADE);");
+                statement.execute("CREATE TABLE IF NOT EXISTS student(student_id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, first_name TEXT, last_name TEXT);");
 
-                statement.executeUpdate("INSERT INTO teacher(id, first_name, last_name) VALUES (-1, 'No Teacher Assigned', 'No Teacher Assigned');");
+                statement.execute("CREATE TABLE IF NOT EXISTS enrollment(section_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY(section_id, student_id), " +
+                        "FOREIGN KEY(section_id) REFERENCES section(section_id) ON DELETE CASCADE ON UPDATE CASCADE, " +
+                        "FOREIGN KEY(student_id) REFERENCES student(student_id) ON DELETE CASCADE ON UPDATE CASCADE);");
+
+                statement.executeUpdate("INSERT INTO teacher(teacher_id, first_name, last_name) VALUES (-1, 'No Teacher Assigned', 'No Teacher Assigned');");
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -607,7 +608,7 @@ public class SchoolManagerFrame extends JFrame{
                     int courseId = ((Course)sectionTable.getValueAt(row, 1)).getId();
                     int teacherId = ((Teacher)sectionTable.getValueAt(row, 2)).getId();
                     System.out.println(courseId + "\t" + teacherId);
-                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s;", courseId, teacherId, sectionTable.getValueAt(row, 0));
+                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE section_id=%s;", courseId, teacherId, sectionTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
 
@@ -635,7 +636,7 @@ public class SchoolManagerFrame extends JFrame{
                     int courseId = ((Course)sectionTable.getValueAt(row, 1)).getId();
                     int teacherId = ((Teacher)sectionTable.getValueAt(row, 2)).getId();
                     System.out.println(courseId + "\t" + teacherId);
-                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE id=%s;", courseId, teacherId, sectionTable.getValueAt(row, 0));
+                    String sqlCommand = String.format("UPDATE section SET course_id=%s, teacher_id=%s WHERE section_id=%s;", courseId, teacherId, sectionTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
                 updateAvailableStudentsToAddToRoster();
@@ -739,12 +740,12 @@ public class SchoolManagerFrame extends JFrame{
 
             while (rs != null && rs.next()){
                 teachersAvailableArrayList.add(rs.getInt(1));
-                teacherObjects.add(new Teacher(rs.getString("first_name"), rs.getString("last_name"), rs.getInt("id")));
+                teacherObjects.add(new Teacher(rs.getString("first_name"), rs.getString("last_name"), rs.getInt("teacher_id")));
             }
-            rs = s.executeQuery("SELECT * FROM course WHERE id >= 1");
+            rs = s.executeQuery("SELECT * FROM course WHERE course_id >= 1");
             while (rs != null && rs.next()){
                 coursesAvailableArrayList.add(rs.getInt(1));
-                courseObjects.add(new Course(rs.getString("title"), rs.getInt("id"), rs.getInt("course_type")));
+                courseObjects.add(new Course(rs.getString("title"), rs.getInt("course_id"), rs.getInt("course_type")));
             }
             coursesAvailable.setItems(courseObjects);
             teachersAvailable.setItems(teacherObjects);
@@ -769,16 +770,16 @@ public class SchoolManagerFrame extends JFrame{
                 notIds += rosterTable.getValueAt(row, 2) + ",";
             }
             notIds = notIds.substring(0, notIds.length()-1) + ")";
-            String sql = String.format("SELECT * FROM student WHERE id NOT IN %s;", notIds);
+            String sql = String.format("SELECT * FROM student WHERE student_id NOT IN %s;", notIds);
             if (rosterTable.getRowCount() == 0){
-                sql = "SELECT * FROM student WHERE id >= 1;";
+                sql = "SELECT * FROM student WHERE student_id >= 1;";
             }
             ResultSet rs = s.executeQuery(sql);
             ArrayList<String> studentsNamesAvailableArrayList = new ArrayList<>();
             ArrayList<Object> studentsArrayList = new ArrayList<>();
             while (rs != null && rs.next()){
-                studentsArrayList.add(new Student(rs.getString("first_name"),rs.getString("last_name"), rs.getInt("id") ));
-                studentsAvailableArrayList.add(rs.getInt("id"));
+                studentsArrayList.add(new Student(rs.getString("first_name"),rs.getString("last_name"), rs.getInt("student_id") ));
+                studentsAvailableArrayList.add(rs.getInt("student_id"));
                 studentsNamesAvailableArrayList.add(rs.getString("last_name") + ", " + rs.getString("first_name"));
             }
             studentsAvailable.setItems(studentsArrayList);
@@ -790,7 +791,7 @@ public class SchoolManagerFrame extends JFrame{
         ArrayList<ArrayList<Object>> data = new ArrayList<>();
         try {
             Statement statement = connection.createStatement();
-            ResultSet rs = statement.executeQuery("SELECT * FROM section WHERE id >= 1;");
+            ResultSet rs = statement.executeQuery("SELECT * FROM section WHERE section_id >= 1;");
             while (rs != null && rs.next()){
                 ArrayList<Object> a1 = new ArrayList<>();
                 a1.add(rs.getObject(1));
@@ -802,17 +803,17 @@ public class SchoolManagerFrame extends JFrame{
                 int course_id = (Integer)row.get(1);
                 int teacher_id = (Integer)row.get(2);
 
-                String sql = String.format("SELECT * FROM teacher WHERE id = %d", teacher_id);
+                String sql = String.format("SELECT * FROM teacher WHERE teacher_id = %d", teacher_id);
                 ResultSet rs1 = statement.executeQuery(sql);
                 rs1.next();
                 Teacher teacherObject = new Teacher(rs1.getString("first_name"), rs1.getString("last_name"), teacher_id);
 
                 row.set(2, teacherObject);
 
-                sql = String.format("SELECT * FROM course WHERE id = %d", course_id);
+                sql = String.format("SELECT * FROM course WHERE course_id = %d", course_id);
                 rs1 = statement.executeQuery(sql);
                 rs1.next();
-                Course courseObject = new Course(rs1.getString("title"), rs1.getInt("id"), rs1.getInt("course_type"));
+                Course courseObject = new Course(rs1.getString("title"), rs1.getInt("course_id"), rs1.getInt("course_type"));
                 row.set(1, courseObject);
             }
 
@@ -874,10 +875,10 @@ public class SchoolManagerFrame extends JFrame{
     public void constructJTables()
     {
         ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(3);
-        teacherTable = constructTable("SELECT * FROM teacher WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
-        studentTable = constructTable("SELECT * FROM student WHERE id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
+        teacherTable = constructTable("SELECT * FROM teacher WHERE teacher_id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
+        studentTable = constructTable("SELECT * FROM student WHERE student_id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
         nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(2);
-        courseTable = constructTable("SELECT * FROM course WHERE id >= 1;", new String[]{"id", "title", "type"}, nonEditableColumns);
+        courseTable = constructTable("SELECT * FROM course WHERE course_id >= 1;", new String[]{"id", "title", "type"}, nonEditableColumns);
         constructSectionTable();
 
         teacherScrollPane.setViewportView(teacherTable);
@@ -895,7 +896,7 @@ public class SchoolManagerFrame extends JFrame{
                 Statement s = connection.createStatement();
                 for (int row = 0; row < courseTable.getRowCount(); row++)
                 {
-                    String sqlCommand = String.format("UPDATE course SET title= '%s', course_type= %s WHERE id = %s",
+                    String sqlCommand = String.format("UPDATE course SET title= '%s', course_type= %s WHERE course_id = %s",
                             courseTable.getValueAt(row, 1), courseTable.getValueAt(row, 2), courseTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
@@ -909,7 +910,7 @@ public class SchoolManagerFrame extends JFrame{
                 Statement s = connection.createStatement();
                 for (int row = 0; row < teacherTable.getRowCount(); row++)
                 {
-                    String sqlCommand = String.format("UPDATE teacher SET first_name= '%s', last_name = '%s' WHERE id = %s",
+                    String sqlCommand = String.format("UPDATE teacher SET first_name= '%s', last_name = '%s' WHERE teacher_id = %s",
                             teacherTable.getValueAt(row, 1), teacherTable.getValueAt(row, 2), teacherTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
@@ -936,7 +937,7 @@ public class SchoolManagerFrame extends JFrame{
                 Statement s = connection.createStatement();
                 for (int row = 0; row < studentTable.getRowCount(); row++)
                 {
-                    String sqlCommand = String.format("UPDATE student SET first_name= '%s', last_name = '%s' WHERE id = %s",
+                    String sqlCommand = String.format("UPDATE student SET first_name= '%s', last_name = '%s' WHERE student_id = %s",
                             studentTable.getValueAt(row, 1), studentTable.getValueAt(row, 2), studentTable.getValueAt(row, 0));
                     s.executeUpdate(sqlCommand);
                 }
@@ -1022,7 +1023,7 @@ public class SchoolManagerFrame extends JFrame{
             System.out.println("student ids: " + studentIds);
             for (Integer id : studentIds)
             {
-                String sqlCommand = String.format("SELECT first_name, last_name FROM student WHERE id = %d", id);
+                String sqlCommand = String.format("SELECT first_name, last_name FROM student WHERE student_id = %d", id);
                 rs = s.executeQuery(sqlCommand);
                 rs.next();
                 studentFirstNames.add(rs.getString("first_name"));
@@ -1043,6 +1044,11 @@ public class SchoolManagerFrame extends JFrame{
         data.sort((o1, o2) -> {
             String os1 = (String)o1.get(0);
             String os2 = (String)o2.get(0);
+            if (os1.compareTo(os2) == 0){
+                String fn1 = (String)o1.get(1);
+                String fn2 = (String)o2.get(1);
+                return fn1.compareTo(fn2);
+            }
             return os1.compareTo(os2);
         });
         ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1); nonEditableColumns.add(2);
@@ -1108,7 +1114,7 @@ public class SchoolManagerFrame extends JFrame{
             Statement statement = connection.createStatement();
 
             //gets all sections of student
-            ResultSet rs = statement.executeQuery("SELECT id FROM section WHERE teacher_id = " + id);
+            ResultSet rs = statement.executeQuery("SELECT teacher_id FROM section WHERE teacher_id = " + id);
 
             ArrayList<Integer> courseIds = new ArrayList<>();
             while (rs != null && rs.next()){
@@ -1119,13 +1125,13 @@ public class SchoolManagerFrame extends JFrame{
             for (Object i : sections)
             {
                 Integer section_id = (Integer)i;
-                rs = statement.executeQuery("SELECT course_id FROM section WHERE id = " + section_id);
+                rs = statement.executeQuery("SELECT course_id FROM section WHERE course_id = " + section_id);
                 rs.next();
                 courseIds.add(rs.getInt("course_id"));
             }
             for (Integer i : courseIds)
             {
-                rs = statement.executeQuery("SELECT title FROM course WHERE id = " + i);
+                rs = statement.executeQuery("SELECT title FROM course WHERE course_id = " + i);
                 rs.next();
                 courseNames.add(rs.getObject("title"));
             }
@@ -1166,12 +1172,12 @@ public class SchoolManagerFrame extends JFrame{
             }
 
             for (Object sectionId : sections){
-                String sql = String.format("SELECT teacher_id FROM section WHERE id = %d", (Integer)sectionId);
+                String sql = String.format("SELECT teacher_id FROM section WHERE section_id = %d", (Integer)sectionId);
                 ResultSet rs1 = statement.executeQuery(sql); rs1.next();
                 int teacherId = rs1.getInt("teacher_id");
-                sql = String.format("SELECT * FROM teacher WHERE id = %d", teacherId);
+                sql = String.format("SELECT * FROM teacher WHERE teacher_id = %d", teacherId);
                 rs1 = statement.executeQuery(sql);rs1.next();
-                teachers.add(new Teacher(rs1.getString("first_name"), rs1.getString("last_name"), rs1.getInt("id")));
+                teachers.add(new Teacher(rs1.getString("first_name"), rs1.getString("last_name"), rs1.getInt("teacher_id")));
             }
 
             //gets the courses of the sections
@@ -1179,13 +1185,13 @@ public class SchoolManagerFrame extends JFrame{
             for (Object i : sections)
             {
                 Integer section_id = (Integer)i;
-                rs = statement.executeQuery("SELECT course_id FROM section WHERE id = " + section_id);
+                rs = statement.executeQuery("SELECT course_id FROM section WHERE section_id = " + section_id);
                 rs.next();
                 courseIds.add(rs.getInt("course_id"));
             }
             for (Integer i : courseIds)
             {
-                rs = statement.executeQuery("SELECT title FROM course WHERE id = " + i);
+                rs = statement.executeQuery("SELECT title FROM course WHERE course_id = " + i);
                 rs.next();
                 courseNames.add(rs.getObject("title"));
             }
