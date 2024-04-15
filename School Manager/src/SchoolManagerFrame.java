@@ -286,7 +286,7 @@ public class SchoolManagerFrame extends JFrame{
                         "FOREIGN KEY(section_id) REFERENCES section(section_id) ON DELETE CASCADE ON UPDATE CASCADE, " +
                         "FOREIGN KEY(student_id) REFERENCES student(student_id) ON DELETE CASCADE ON UPDATE CASCADE);");
 
-                statement.executeUpdate("INSERT INTO teacher(teacher_id, first_name, last_name) VALUES (-1, 'No Teacher Assigned', 'No Teacher Assigned');");
+                statement.executeUpdate("INSERT INTO teacher(teacher_id, first_name, last_name) VALUES (-1, 'Assigned', 'No Teacher');");
             }catch (Exception e1){
                 e1.printStackTrace();
             }
@@ -579,16 +579,16 @@ public class SchoolManagerFrame extends JFrame{
         studentsAvailableArrayList = new ArrayList<>();
         coursesAvailableArrayList = new ArrayList<>();
 
-        JLabel teacherAvailableText = new JLabel("Available Teachers (ID):"); teacherAvailableText.setBounds(525, 150, 250, 25); sectionPanel.add(teacherAvailableText);
-        JLabel coursesAvailableText = new JLabel("Available Courses  (ID):"); coursesAvailableText.setBounds(525, 200, 250, 25); sectionPanel.add(coursesAvailableText);
-        JLabel studentsAvailableText = new JLabel("Available students to add (ID):"); studentsAvailableText.setBounds(525, 250, 250, 25); sectionPanel.add(studentsAvailableText);
+        JLabel teacherAvailableText = new JLabel("Available Teachers:"); teacherAvailableText.setBounds(525, 150, 250, 25); sectionPanel.add(teacherAvailableText);
+        JLabel coursesAvailableText = new JLabel("Available Courses:"); coursesAvailableText.setBounds(525, 200, 250, 25); sectionPanel.add(coursesAvailableText);
+        JLabel studentsAvailableText = new JLabel("Available students to add:"); studentsAvailableText.setBounds(525, 250, 250, 25); sectionPanel.add(studentsAvailableText);
 
         JLabel versionNumber = new JLabel("Version Number: 1.0.16.2024"); versionNumber.setBounds(10 ,10, 450, 100);
         JLabel applicationCreators = new JLabel("Application Creators: Varain \"the goat\" Gandikota"); applicationCreators.setBounds(10 ,125, 700, 100);
         versionNumber.setFont(new Font("Serif", Font.PLAIN, 30)); applicationCreators.setFont(new Font("Serif", Font.PLAIN, 30));
         helpPanel.add(versionNumber); helpPanel.add(applicationCreators);
 
-        teachersAvailable = new ComboBox<>(700, 150, 150, 25, sectionPanel);
+        teachersAvailable = new ComboBox<>(700, 150, 245, 25, sectionPanel);
         teachersAvailable.addActionListener(e -> {
 
             if (sectionTable.getSelectedRow() == -1 || teachersAvailable.getSelectedItem() == null)
@@ -618,7 +618,7 @@ public class SchoolManagerFrame extends JFrame{
                 e1.printStackTrace();
             }
         });
-        coursesAvailable = new ComboBox<>(700, 200, 150, 25, sectionPanel);
+        coursesAvailable = new ComboBox<>(700, 200, 245, 25, sectionPanel);
         coursesAvailable.addActionListener(e -> {
             if (sectionTable.getSelectedRow() == -1 || coursesAvailable.getSelectedItem() == null)
                 return;
@@ -645,7 +645,7 @@ public class SchoolManagerFrame extends JFrame{
                 e1.printStackTrace();
             }
         });
-        studentsAvailable = new ComboBox<>(700, 250, 150, 25, sectionPanel);
+        studentsAvailable = new ComboBox<>(700, 250, 245, 25, sectionPanel);
         updateActiveTeachersAndCourses();
         updateAvailableStudentsToAddToRoster();
         courseACAbutton.addActionListener(e -> {
@@ -828,10 +828,17 @@ public class SchoolManagerFrame extends JFrame{
             tableData[i] = data.get(i).toArray();
         }
         ArrayList<Integer> nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(1); nonEditableColumns.add(2);
-        Table t = new Table(new String[]{"section_id", "course_name", "teacher_name"}, tableData, nonEditableColumns);
-        t.setVisible(true);
-        t.getTableHeader().setReorderingAllowed(false);
+        Table t = new Table(new String[]{"id", "course_name", "teacher_name"}, tableData, nonEditableColumns);
+
         t.getTableHeader().setResizingAllowed(false);
+        t.getTableHeader().setReorderingAllowed(false);
+
+        t.getColumnModel().getColumn(0).setMinWidth(25);
+        t.getColumnModel().getColumn(0).setMaxWidth(25);
+        t.getColumnModel().getColumn(0).setPreferredWidth(25);
+
+        t.setVisible(true);
+        System.out.println("Pref Width"+t.getColumnModel().getColumn(0).getPreferredWidth());
         sectionTable = t;
         sectionScrollPane.setViewportView(sectionTable);
         sectionTable.getSelectionModel().addListSelectionListener(e -> {
@@ -879,6 +886,12 @@ public class SchoolManagerFrame extends JFrame{
         studentTable = constructTable("SELECT * FROM student WHERE student_id >= 1;", new String[]{"id", "first_name", "last_name"}, nonEditableColumns);
         nonEditableColumns = new ArrayList<>(); nonEditableColumns.add(0); nonEditableColumns.add(2);
         courseTable = constructTable("SELECT * FROM course WHERE course_id >= 1;", new String[]{"id", "title", "type"}, nonEditableColumns);
+
+        courseTable.getColumnModel().getColumn(0).setMaxWidth(30);
+        studentTable.getColumnModel().getColumn(0).setMaxWidth(30);
+        teacherTable.getColumnModel().getColumn(0).setMaxWidth(30);
+
+
         constructSectionTable();
 
         teacherScrollPane.setViewportView(teacherTable);
@@ -1063,7 +1076,10 @@ public class SchoolManagerFrame extends JFrame{
         t.setVisible(true);
         t.getTableHeader().setReorderingAllowed(false);
         t.getTableHeader().setResizingAllowed(false);
+
+        t.getColumnModel().getColumn(2).setMaxWidth(30);
         rosterTable = t;
+
         t.getSelectionModel().addListSelectionListener(e -> {
             removeStudentFromRosterButton.setEnabled(true);
             removeStudentFromRosterButton.setVisible(true);
@@ -1114,7 +1130,7 @@ public class SchoolManagerFrame extends JFrame{
             Statement statement = connection.createStatement();
 
             //gets all sections of student
-            ResultSet rs = statement.executeQuery("SELECT teacher_id FROM section WHERE teacher_id = " + id);
+            ResultSet rs = statement.executeQuery("SELECT section_id FROM section WHERE teacher_id = " + id);
 
             ArrayList<Integer> courseIds = new ArrayList<>();
             while (rs != null && rs.next()){
@@ -1125,7 +1141,7 @@ public class SchoolManagerFrame extends JFrame{
             for (Object i : sections)
             {
                 Integer section_id = (Integer)i;
-                rs = statement.executeQuery("SELECT course_id FROM section WHERE course_id = " + section_id);
+                rs = statement.executeQuery("SELECT course_id FROM section WHERE section_id = " + section_id);
                 rs.next();
                 courseIds.add(rs.getInt("course_id"));
             }
@@ -1145,7 +1161,8 @@ public class SchoolManagerFrame extends JFrame{
         {
             tableData[i] = new Object[]{sections.get(i), courseNames.get(i)};
         }
-        Table t = new Table(new String[]{"section_id", "course_name"}, tableData, nonEditableColumns);
+        Table t = new Table(new String[]{"id", "course_name"}, tableData, nonEditableColumns);
+        t.getColumnModel().getColumn(0).setMaxWidth(30);
         sectionsTaughtTable = t;
         sectionsTaughtScrollPane.setViewportView(sectionsTaughtTable);
         t.setVisible(true);
@@ -1208,7 +1225,8 @@ public class SchoolManagerFrame extends JFrame{
         {
             tableData[i] = new Object[]{sections.get(i), courseNames.get(i), teachers.get(i)};
         }
-        Table t = new Table(new String[]{"section_id", "course_name", "teacher"}, tableData, nonEditableColumns);
+        Table t = new Table(new String[]{"id", "course_name", "teacher"}, tableData, nonEditableColumns);
+        t.getColumnModel().getColumn(0).setMaxWidth(30);
         studentScheduleTable = t;
         scheduleScrollPane.setViewportView(studentScheduleTable);
         t.setVisible(true);
