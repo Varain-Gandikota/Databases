@@ -470,21 +470,6 @@ public class SchoolManagerFrame extends JFrame{
                 e1.printStackTrace();
             }
         });
-        /*teacherSaveChanges.addActionListener(e -> {
-            try{
-                Statement s = connection.createStatement();
-                for (int row = 0; row < teacherTable.getRowCount(); row++)
-                {
-                    String sqlCommand = String.format("UPDATE teacher SET first_name= '%s', last_name = '%s' WHERE id = %s",
-                            teacherTable.getValueAt(row, 1), teacherTable.getValueAt(row, 2), teacherTable.getValueAt(row, 0));
-                    s.executeUpdate(sqlCommand);
-                }
-                updateActiveTeachersAndCourses();
-                updateAvailableStudentsToAddToRoster();
-            }catch (Exception e1){
-                e1.printStackTrace();
-            }
-        });*/
         addTeacherButton.addActionListener(e -> {
             if (teacherFirstName.getText().isEmpty() || teacherLastName.getText().isEmpty())
                 return;
@@ -516,22 +501,6 @@ public class SchoolManagerFrame extends JFrame{
                 e1.printStackTrace();
             }
         });
-        /*studentSaveChanges.addActionListener(e -> {
-            try{
-                Statement s = connection.createStatement();
-                for (int row = 0; row < studentTable.getRowCount(); row++)
-                {
-                    String sqlCommand = String.format("UPDATE student SET first_name= '%s', last_name = '%s' WHERE id = %s",
-                            studentTable.getValueAt(row, 1), studentTable.getValueAt(row, 2), studentTable.getValueAt(row, 0));
-                    s.executeUpdate(sqlCommand);
-                }
-                rosterTable = constructRosterTable(0);
-                updateAvailableStudentsToAddToRoster();
-                rosterScrollPane.setViewportView(rosterTable);
-            }catch (Exception e1){
-                e1.printStackTrace();
-            }
-        });*/
         addStudentButton.addActionListener(e -> {
             if (studentFirstName.getText().isEmpty() || studentLastName.getText().isEmpty())
                 return;
